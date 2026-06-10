@@ -398,6 +398,69 @@
   .status-select:focus { border-color: var(--vino); box-shadow: 0 0 0 2px rgba(107,31,42,0.08); }
   .status-select option { background: var(--surface); color: var(--text); text-transform: none; }
 
+  .priority-pill {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 3px 8px;
+    border-radius: 2px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .priority-pill.non_negotiable { background: rgba(192,57,43,0.1); border-color: rgba(192,57,43,0.22); color: var(--red); }
+  .priority-pill.important { background: rgba(212,135,10,0.1); border-color: rgba(212,135,10,0.22); color: var(--amber); }
+  .priority-pill.enhancement { background: rgba(139,115,85,0.1); border-color: rgba(139,115,85,0.2); color: var(--text-light); }
+
+  .owner-filter {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: -8px 0 22px;
+  }
+  .filter-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    padding: 7px 10px;
+    text-transform: uppercase;
+  }
+  .filter-chip:hover,
+  .filter-chip.active {
+    border-color: var(--vino);
+    color: var(--vino);
+    background: var(--surface2);
+  }
+
+  .readiness-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .readiness-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .readiness-card.ready { border-left: 3px solid var(--green); }
+  .readiness-card.at_risk { border-left: 3px solid var(--amber); }
+  .readiness-card.not_ready { border-left: 3px solid var(--red); }
+  .readiness-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-light); margin-bottom: 8px; }
+  .readiness-value { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--text); }
+  .readiness-value.ready { color: var(--green); }
+  .readiness-value.at_risk { color: var(--amber); }
+  .readiness-value.not_ready { color: var(--red); }
+  .readiness-note { font-size: 11px; color: var(--text-light); margin-top: 6px; line-height: 1.5; }
+
   .overdue-flag {
     display: inline-flex;
     align-items: center;
@@ -572,7 +635,7 @@
   /* task rows */
   .task-row {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr 120px 80px;
+    grid-template-columns: 2fr 130px 1fr 1fr 1fr 120px 150px;
     align-items: center;
     padding: 12px 20px;
     border-bottom: 1px solid rgba(107,31,42,0.06);
@@ -584,7 +647,7 @@
   .task-row.overdue { background: rgba(192,57,43,0.04); }
   .task-row-header {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr 120px 80px;
+    grid-template-columns: 2fr 130px 1fr 1fr 1fr 120px 150px;
     padding: 8px 20px;
     gap: 12px;
     background: var(--bg);
@@ -620,7 +683,19 @@
   }
   .task-date { font-size: 11px; color: var(--text-light); }
   .task-date.overdue { color: var(--red); font-weight: 600; }
-  .task-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .task-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  .quick-action {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 4px 6px;
+    text-transform: uppercase;
+  }
+  .quick-action:hover { border-color: var(--vino); color: var(--vino); }
   .icon-btn {
     background: none;
     border: none;
@@ -878,7 +953,7 @@
       <div class="topbar-section" id="topbar-section">Events</div>
     </div>
     <div class="nav-tabs">
-      <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</div>
+      <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Command Centre</div>
       <div class="nav-tab" data-tab="listening" onclick="switchTab('listening')">The Listening Bar</div>
       <div class="nav-tab" data-tab="jazz" onclick="switchTab('jazz')">Jazz Tuesdays</div>
     </div>
@@ -908,6 +983,19 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const TEAM = ['Francesco','Manuel','Alessandro','Nicole','Danilo','Alper','Katerina','Valentina'];
 const CHAMPIONS = ['Manuel','Alessandro','Francesco','Alper'];
+const PRIORITIES = {
+  non_negotiable: { label:'Non-Negotiable', rank:0 },
+  important: { label:'Important', rank:1 },
+  enhancement: { label:'Enhancement', rank:2 }
+};
+const DUE_BY_TRACK = {
+  marketing: -4,
+  champion: -3,
+  technical: -1,
+  guest_revenue: -2,
+  service: -1,
+  documents: -3
+};
 const TRACKS = {
   marketing:     { icon:'📣', label:'Marketing' },
   champion:      { icon:'🏆', label:'Champion' },
@@ -925,7 +1013,8 @@ let state = {
   tasks: {},      // weekId -> array of tasks
   finance: {},    // weekId -> array of finance items
   currentWeek: {},// eventId -> weekId
-  currentTab: 'dashboard'
+  currentTab: 'dashboard',
+  ownerFilter: 'All'
 };
 
 // ── UTILS ──
@@ -933,6 +1022,12 @@ function initials(name){ return name ? name.slice(0,2).toUpperCase() : '?'; }
 function fmt(n){ return 'AED '+(n||0).toLocaleString(); }
 function fmtDate(d){ if(!d) return '—'; const x=new Date(d); return x.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
 function isOverdue(d){ if(!d) return false; return new Date(d) < new Date() && true; }
+function isDueToday(d){
+  if(!d) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const x = new Date(d); x.setHours(0,0,0,0);
+  return x.getTime() === today.getTime();
+}
 function isoDateFromOffset(dateStr, offsetDays){
   if(!dateStr) return null;
   const d = new Date(dateStr);
@@ -962,6 +1057,62 @@ function toast(msg, isError=false){
   setTimeout(()=>{ t.className='toast'; }, 3000);
 }
 
+function parseTaskMeta(task){
+  if(!task?.description) return {};
+  try {
+    const meta = JSON.parse(task.description);
+    return meta && meta.__rlh ? meta : {};
+  } catch(e){ return {}; }
+}
+function taskDescription(priority){
+  return JSON.stringify({ __rlh:true, priority: priority || 'important' });
+}
+function inferPriority(task){
+  const title = (task?.title||'').toLowerCase();
+  const nonNegotiable = [
+    'selector','artist rotation','artist briefed','technical rider','sound check','equipment confirmed',
+    'covers target','service leader','sequence of service','contract uploaded','permit/visa'
+  ];
+  const enhancement = ['ladies/atmosphere','casuals confirmed'];
+  if(nonNegotiable.some(k=>title.includes(k))) return 'non_negotiable';
+  if(enhancement.some(k=>title.includes(k))) return 'enhancement';
+  return 'important';
+}
+function getPriority(task){
+  return parseTaskMeta(task).priority || task.priority || inferPriority(task);
+}
+function priorityLabel(task){ return PRIORITIES[getPriority(task)]?.label || 'Important'; }
+function priorityRank(task){ return PRIORITIES[getPriority(task)]?.rank ?? 1; }
+function taskSort(a,b){
+  const aBlocked = a.status==='blocked' ? 0 : 1;
+  const bBlocked = b.status==='blocked' ? 0 : 1;
+  if(aBlocked!==bBlocked) return aBlocked-bBlocked;
+  const ap = priorityRank(a), bp = priorityRank(b);
+  if(ap!==bp) return ap-bp;
+  const ao = isOverdue(a.due_date)?0:1;
+  const bo = isOverdue(b.due_date)?0:1;
+  if(ao!==bo) return ao-bo;
+  return (a.due_date||'9999-12-31').localeCompare(b.due_date||'9999-12-31');
+}
+function ownerMatches(task, owner){
+  return owner==='All' || task.assigned_to===owner || task.champion===owner;
+}
+function readinessForTasks(tasks){
+  const non = tasks.filter(t=>getPriority(t)==='non_negotiable');
+  const open = non.filter(t=>t.status!=='done');
+  const blocked = non.filter(t=>t.status==='blocked');
+  const allBlocked = tasks.filter(t=>t.status==='blocked');
+  const done = non.length - open.length;
+  let status = 'ready', label = 'Ready';
+  if(blocked.length){ status = 'not_ready'; label = 'Not Ready'; }
+  else if(open.length){ status = 'at_risk'; label = 'At Risk'; }
+  return { status, label, nonTotal: non.length, nonDone: done, nonOpen: open.length, nonBlocked: blocked.length, blockedTotal: allBlocked.length };
+}
+function setOwnerFilter(owner){
+  state.ownerFilter = owner;
+  renderMain();
+}
+
 // ── NAVIGATION ──
 function enterApp(module){
   document.getElementById('landing').style.display = 'none';
@@ -969,7 +1120,7 @@ function enterApp(module){
   switchTab('dashboard');
 }
 function showLanding(){
-  document.getElementById('landing').style.display = 'flex';
+  document.getElementById('landing').style.display = 'grid';
   document.getElementById('app').style.display = 'none';
 }
 function switchTab(tab){
@@ -1012,98 +1163,108 @@ function renderMain(){
 
 // ── DASHBOARD ──
 function renderDashboard(){
-  // collect all tasks across current weeks
   let allTasks = [];
-  let totalTasks=0, doneTasks=0, overdueCount=0, blockedCount=0;
   let committedFinance=0, targetRevenue=0;
+  const readinessCards = [];
 
   for(const ev of state.events){
     const wid = state.currentWeek[ev.id];
     if(wid){
       const tasks = state.tasks[wid]||[];
       const finance = state.finance[wid]||[];
-      allTasks = allTasks.concat(tasks.map(t=>({...t, eventName: ev.name, eventDay: ev.day_of_week})));
-      totalTasks += tasks.length;
-      doneTasks += tasks.filter(t=>t.status==='done').length;
-      overdueCount += tasks.filter(t=>t.status!=='done' && isOverdue(t.due_date)).length;
-      blockedCount += tasks.filter(t=>t.status==='blocked').length;
+      const readiness = readinessForTasks(tasks);
+      allTasks = allTasks.concat(tasks.map(t=>({...t, eventName: ev.name, eventDay: ev.day_of_week, weekId: wid})));
       committedFinance += finance
         .filter(f=>f.payment_status!=='paid')
         .reduce((sum,f)=>sum+(Number(f.amount)||0),0);
       targetRevenue += (Number(ev.avg_spend_target)||0) * (Number(ev.capacity)||0);
+      readinessCards.push(`
+        <div class="readiness-card ${readiness.status}">
+          <div class="readiness-label">${ev.name}</div>
+          <div class="readiness-value ${readiness.status}">${readiness.label}</div>
+          <div class="readiness-note">Non-Negotiables ${readiness.nonDone}/${readiness.nonTotal} complete | ${readiness.blockedTotal} blocked</div>
+        </div>`);
     }
   }
 
-  const pct = totalTasks ? Math.round(doneTasks/totalTasks*100) : 0;
+  const owner = state.ownerFilter || 'All';
+  const visibleTasks = allTasks.filter(t=>ownerMatches(t, owner));
+  const openTasks = visibleTasks.filter(t=>t.status!=='done').sort(taskSort);
+  const nonOpen = visibleTasks.filter(t=>getPriority(t)==='non_negotiable' && t.status!=='done');
+  const blocked = visibleTasks.filter(t=>t.status==='blocked');
+  const dueToday = visibleTasks.filter(t=>t.status!=='done' && isDueToday(t.due_date));
+  const overdue = visibleTasks.filter(t=>t.status!=='done' && isOverdue(t.due_date));
+  const myTasks = owner==='All' ? openTasks.length : visibleTasks.filter(t=>t.status!=='done' && t.assigned_to===owner).length;
   const financeRatio = targetRevenue ? Math.round(committedFinance/targetRevenue*100) : 0;
 
-  // countdowns
-  const cdCards = state.events.map(ev=>{
-    const next = nextOccurrence(ev.day_of_week);
-    const days = daysUntil(next.toISOString().split('T')[0]);
-    const wid = state.currentWeek[ev.id];
-    const tasks = wid ? (state.tasks[wid]||[]) : [];
-    const total = tasks.length;
-    const done = tasks.filter(t=>t.status==='done').length;
-    const p = total ? Math.round(done/total*100) : 0;
-    return `
-    <div class="countdown-card">
-      <div class="cd-event">${ev.day_of_week}s · Scala</div>
-      <div class="cd-name">${ev.name}</div>
-      <div class="cd-timer">${days}<span>days away</span></div>
-      <div class="cd-meta">${next.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</div>
-      <div class="cd-progress">
-        <div class="cd-progress-label"><span>Checklist</span><span>${done}/${total} tasks</span></div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${p}%"></div></div>
-      </div>
-    </div>`;
-  }).join('');
+  const ownerChips = ['All', ...TEAM].map(name=>
+    `<button class="filter-chip ${owner===name?'active':''}" onclick="setOwnerFilter('${name}')">${name}</button>`
+  ).join('');
 
-  // pipeline — show active/not_started tasks, overdue first
-  const pipeline = allTasks
-    .filter(t=>t.status!=='done')
-    .sort((a,b)=>{
-      const ao = isOverdue(a.due_date)?0:1;
-      const bo = isOverdue(b.due_date)?0:1;
-      return ao-bo;
-    });
-
-  const pipelineRows = pipeline.length===0
-    ? '<tr><td colspan="6"><div class="empty-state">All tasks complete — nothing in the pipeline.</div></td></tr>'
-    : pipeline.map(t=>{
+  const rows = openTasks.length===0
+    ? '<tr><td colspan="7"><div class="empty-state">Nothing open for this view.</div></td></tr>'
+    : openTasks.map(t=>{
         const over = t.status!=='done' && isOverdue(t.due_date);
+        const p = getPriority(t);
         return `<tr class="${over?'overdue':''}">
           <td><div class="task-name">${t.title}</div></td>
+          <td><span class="priority-pill ${p}">${priorityLabel(t)}</span></td>
           <td><span class="track-tag">${TRACKS[t.track]?.label||t.track}</span></td>
           <td>${t.eventName}</td>
-          <td>${t.assigned_to ? `<div class="task-member"><span class="member-dot">${initials(t.assigned_to)}</span>${t.assigned_to}</div>` : '<span style="color:var(--text-light)">—</span>'}</td>
-          <td class="task-date ${over?'overdue':''}">${over?'<span class="overdue-flag">⚠ OVERDUE</span> ':''}${fmtDate(t.due_date)}</td>
+          <td>${t.assigned_to ? `<div class="task-member"><span class="member-dot">${initials(t.assigned_to)}</span>${t.assigned_to}</div>` : '<span style="color:var(--text-light)">?</span>'}</td>
+          <td class="task-date ${over?'overdue':''}">${over?'<span class="overdue-flag">? OVERDUE</span> ':''}${fmtDate(t.due_date)}</td>
+          <td><span class="status-pill ${t.status}">${t.status.replace('_',' ')}</span></td>
+        </tr>`;
+      }).join('');
+
+  const championTasks = allTasks
+    .filter(t=>t.status!=='done' && ['Manuel','Alessandro'].includes(t.champion))
+    .sort(taskSort)
+    .slice(0,8);
+  const championRows = championTasks.length===0
+    ? '<tr><td colspan="6"><div class="empty-state">No open champion items for Manuel or Alessandro.</div></td></tr>'
+    : championTasks.map(t=>{
+        const p = getPriority(t);
+        return `<tr>
+          <td><div class="task-name">${t.title}</div></td>
+          <td><span class="priority-pill ${p}">${priorityLabel(t)}</span></td>
+          <td>${t.eventName}</td>
+          <td>${t.champion}</td>
+          <td>${fmtDate(t.due_date)}</td>
           <td><span class="status-pill ${t.status}">${t.status.replace('_',' ')}</span></td>
         </tr>`;
       }).join('');
 
   return `
   <div class="dashboard-header">
-    <div><div class="page-title">Dashboard</div><div class="page-sub">Weekly programme overview · ${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
+    <div><div class="page-title">Command Centre</div><div class="page-sub">What needs attention now | ${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
   </div>
-  <div class="countdown-row">${cdCards}</div>
+  <div class="owner-filter">${ownerChips}</div>
+  <div class="readiness-row">${readinessCards.join('')}</div>
   <div class="stats-row">
-    <div class="stat-card"><div class="stat-label">Total Tasks</div><div class="stat-value">${totalTasks}</div></div>
-    <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value green">${pct}%</div></div>
-    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value ${overdueCount>0?'red':''}">${overdueCount}</div></div>
-    <div class="stat-card"><div class="stat-label">Blocked</div><div class="stat-value ${blockedCount>0?'amber':''}">${blockedCount}</div></div>
-    <div class="stat-card"><div class="stat-label">Finance</div><div class="stat-value ${financeRatio>25?'amber':''}">${financeRatio}%</div><div class="stat-note">${fmt(committedFinance)} / ${fmt(targetRevenue)}</div></div>
+    <div class="stat-card"><div class="stat-label">Non-Negotiable Open</div><div class="stat-value ${nonOpen.length?'red':''}">${nonOpen.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Blocked</div><div class="stat-value ${blocked.length?'red':''}">${blocked.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Due Today</div><div class="stat-value ${dueToday.length?'amber':''}">${dueToday.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value ${overdue.length?'red':''}">${overdue.length}</div></div>
+    <div class="stat-card"><div class="stat-label">${owner==='All'?'Open Tasks':'My Tasks'}</div><div class="stat-value">${myTasks}</div><div class="stat-note">Finance ${financeRatio}% | ${fmt(committedFinance)}</div></div>
   </div>
-  <div class="section-header"><div class="section-title">Pipeline · Open Tasks</div></div>
+  <div class="section-header"><div class="section-title">Action List | ${owner}</div></div>
   <table class="pipeline-table">
     <thead><tr>
-      <th>Task</th><th>Track</th><th>Event</th><th>Owner</th><th>Due</th><th>Status</th>
+      <th>Task</th><th>Priority</th><th>Track</th><th>Event</th><th>Owner</th><th>Due</th><th>Status</th>
     </tr></thead>
-    <tbody>${pipelineRows}</tbody>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="section-header" style="margin-top:28px"><div class="section-title">Champion Attention | Manuel / Alessandro</div></div>
+  <table class="pipeline-table">
+    <thead><tr>
+      <th>Task</th><th>Priority</th><th>Event</th><th>Champion</th><th>Due</th><th>Status</th>
+    </tr></thead>
+    <tbody>${championRows}</tbody>
   </table>`;
 }
 
-// ── EVENT PAGE ──
+// ?? EVENT PAGE ??
 function renderEventPage(ev){
   if(!ev) return '<div class="loading">Event not found</div>';
   const weeks = state.weeks[ev.id]||[];
@@ -1117,7 +1278,7 @@ function renderEventPage(ev){
   // build tracks
   const tracksHTML = TRACK_KEYS.map(track=>{
     const isFin = track==='finance';
-    const trackTasks = tasks.filter(t=>t.track===track);
+    const trackTasks = tasks.filter(t=>t.track===track).sort(taskSort);
     const done = trackTasks.filter(t=>t.status==='done').length;
     const pct = trackTasks.length ? Math.round(done/trackTasks.length*100) : 0;
 
@@ -1127,7 +1288,7 @@ function renderEventPage(ev){
     } else {
       bodyHTML = `
       <div class="task-row-header">
-        <span>Task</span><span>Assigned To</span><span>Champion</span><span>Due</span><span>Status</span><span></span>
+        <span>Task</span><span>Priority</span><span>Assigned To</span><span>Champion</span><span>Due</span><span>Status</span><span></span>
       </div>
       ${trackTasks.length===0 ? '<div class="empty-state">No tasks yet — add one below.</div>' :
         trackTasks.map(t=>renderTaskRow(t)).join('')}
@@ -1149,6 +1310,7 @@ function renderEventPage(ev){
   }).join('');
 
   const targetRev = ev.avg_spend_target * ev.capacity;
+  const readiness = readinessForTasks(tasks);
 
   return `
   <div class="event-header">
@@ -1167,14 +1329,27 @@ function renderEventPage(ev){
     </div>
   </div>
 
+  <div class="readiness-row">
+    <div class="readiness-card ${readiness.status}">
+      <div class="readiness-label">Event Readiness</div>
+      <div class="readiness-value ${readiness.status}">${readiness.label}</div>
+      <div class="readiness-note">Non-Negotiables ${readiness.nonDone}/${readiness.nonTotal} complete | ${readiness.blockedTotal} blocked</div>
+    </div>
+    <div class="readiness-card">
+      <div class="readiness-label">Next Brief</div>
+      <div class="readiness-value">${fmt(targetRev)}</div>
+      <div class="readiness-note">${ev.capacity} covers | AED ${ev.avg_spend_target} average spend | AED ${ev.entertainment_cost?.toLocaleString()} entertainment</div>
+    </div>
+  </div>
+
   <div class="week-bar">
     <select class="week-select" onchange="selectWeek('${ev.id}', this.value)">
       <option value="">— Select week —</option>
       ${weekOptions}
     </select>
-    <button class="btn btn-gold" onclick="createNewWeek('${ev.id}')">+ New Week</button>
-    ${wid ? `<button class="btn btn-outline" onclick="duplicateWeek('${ev.id}','${wid}')">⊕ Duplicate Week</button>` : ''}
-    ${wid ? `<button class="btn btn-outline btn-sm" onclick="openWeekActuals('${wid}')">Edit Actuals</button>` : ''}
+    <button class="btn btn-gold" onclick="createNewWeek('${ev.id}')">+ Create Week</button>
+    ${wid ? `<button class="btn btn-outline" onclick="duplicateWeek('${ev.id}','${wid}')">⊕ Create Next Week</button>` : ''}
+    ${wid ? `<button class="btn btn-outline btn-sm" onclick="openWeekActuals('${wid}')">Enter Results</button>` : ''}
   </div>
 
   ${!wid ? '<div class="empty-state" style="padding:60px;text-align:center">No week selected. Create a new week to get started.</div>' :
@@ -1183,12 +1358,14 @@ function renderEventPage(ev){
 
 function renderTaskRow(t){
   const over = t.status!=='done' && isOverdue(t.due_date);
+  const priority = getPriority(t);
   return `
   <div class="task-row ${over?'overdue':''}" data-task-id="${t.id}">
     <div class="task-title-cell">
       <div class="task-name editable" onclick="openEditTask('${t.id}')">${t.title}</div>
       ${t.notes ? `<div class="task-notes-preview">${t.notes}</div>` : ''}
     </div>
+    <div><span class="priority-pill ${priority}">${priorityLabel(t)}</span></div>
     <div class="task-member">
       ${t.assigned_to ? `<span class="member-dot">${initials(t.assigned_to)}</span>${t.assigned_to}` : '<span style="color:var(--text-light);font-size:11px">Unassigned</span>'}
     </div>
@@ -1205,8 +1382,11 @@ function renderTaskRow(t){
       </select>
     </div>
     <div class="task-actions">
-      <button class="icon-btn" onclick="openEditTask('${t.id}')" title="Edit">✏</button>
-      <button class="icon-btn" onclick="deleteTask('${t.id}')" title="Delete" style="color:rgba(192,57,43,0.5)">✕</button>
+      ${t.status==='not_started' ? `<button class="quick-action" onclick="updateTaskStatus('${t.id}','in_progress')">Start</button>` : ''}
+      ${t.status!=='done' ? `<button class="quick-action" onclick="updateTaskStatus('${t.id}','done')">Done</button>` : ''}
+      ${t.status!=='blocked' && t.status!=='done' ? `<button class="quick-action" onclick="updateTaskStatus('${t.id}','blocked')">Block</button>` : ''}
+      <button class="icon-btn" onclick="openEditTask('${t.id}')" title="Edit">?</button>
+      <button class="icon-btn" onclick="deleteTask('${t.id}')" title="Delete" style="color:rgba(192,57,43,0.5)">?</button>
     </div>
   </div>`;
 }
@@ -1222,6 +1402,11 @@ function renderAddTaskBar(track, weekId, eventId){
     <select id="new-champion-${track}">
       <option value="">Champion...</option>
       ${CHAMPIONS.map(m=>`<option value="${m}">${m}</option>`).join('')}
+    </select>
+    <select id="new-priority-${track}">
+      <option value="non_negotiable">Non-Negotiable</option>
+      <option value="important" selected>Important</option>
+      <option value="enhancement">Enhancement</option>
     </select>
     <input type="date" id="new-date-${track}" style="flex:0;min-width:130px">
     <button class="btn btn-gold btn-sm" onclick="addTask('${track}','${weekId}','${eventId}')">Add</button>
@@ -1329,11 +1514,11 @@ async function duplicateWeek(eventId, sourceWeekId){
       event_id: eventId,
       track: t.track,
       title: t.title,
-      description: t.description,
+      description: taskDescription(getPriority(t)),
       assigned_to: t.assigned_to,
       champion: t.champion,
       status: 'not_started',
-      due_date: null,
+      due_date: t.due_date ? isoDateFromOffset(t.due_date, 7) : isoDateFromOffset(newWeek.week_date, DUE_BY_TRACK[t.track] ?? -1),
       notes: null,
       sort_order: t.sort_order
     }));
@@ -1365,24 +1550,16 @@ async function duplicateWeek(eventId, sourceWeekId){
   state.tasks[newWeek.id] = tasks||[];
   const { data: fin } = await sb.from('finance').select('*').eq('week_id',newWeek.id);
   state.finance[newWeek.id] = fin||[];
-  toast('Week duplicated — '+label);
+  toast('Next week created — '+label);
   renderMain();
 }
 
 // ── SEED DEFAULT TASKS ──
 async function seedDefaultTasks(weekId, eventId, eventName, eventDate){
   const isJazz = eventName.includes('Jazz');
-  const dueByTrack = {
-    marketing: -4,
-    champion: -3,
-    technical: -1,
-    guest_revenue: -2,
-    service: -1,
-    documents: -3
-  };
   const defaults = [
     // Marketing
-    { track:'marketing', title:'Confirm launch date and time with Nicole', assigned_to:'Manuel', champion:'Alessandro', sort_order:1 },
+    { track:'marketing', title:'Confirm launch date and time with Nicole', priority:'non_negotiable', assigned_to:'Manuel', champion:'Alessandro', sort_order:1 },
     { track:'marketing', title:'Send artist stage name to Nicole', assigned_to:'Manuel', champion:'Alessandro', sort_order:2 },
     { track:'marketing', title:'Send hi-res artist image via WeTransfer to Nicole', assigned_to:'Manuel', champion:'Alessandro', sort_order:3 },
     { track:'marketing', title:'Send audio/reference music links to Nicole', assigned_to:'Manuel', champion:'Alessandro', sort_order:4 },
@@ -1391,26 +1568,26 @@ async function seedDefaultTasks(weekId, eventId, eventName, eventDate){
     { track:'marketing', title:'Website updated', assigned_to:'Nicole', champion:'Francesco', sort_order:7 },
     // Champion
     { track:'champion', title: isJazz ? 'Confirm artist rotation (Ryan Gibbs / Salt N Pepper / Jazz Trio)' : 'Confirm vinyl selector for the week', assigned_to:'Manuel', champion:'Alessandro', sort_order:1 },
-    { track:'champion', title:'Artist briefed on format and timing', assigned_to:'Manuel', champion:'Alessandro', sort_order:2 },
-    { track:'champion', title:'Technical rider received and reviewed', assigned_to:'Manuel', champion:'Alessandro', sort_order:3 },
+    { track:'champion', title:'Artist briefed on format and timing', priority:'non_negotiable', assigned_to:'Manuel', champion:'Alessandro', sort_order:2 },
+    { track:'champion', title:'Technical rider received and reviewed', priority:'non_negotiable', assigned_to:'Manuel', champion:'Alessandro', sort_order:3 },
     // Technical
-    { track:'technical', title:'Sound check scheduled', assigned_to:'Danilo', champion:'Manuel', sort_order:1 },
-    { track:'technical', title:'Equipment confirmed and tested', assigned_to:'Danilo', champion:'Manuel', sort_order:2 },
+    { track:'technical', title:'Sound check scheduled', priority:'non_negotiable', assigned_to:'Danilo', champion:'Manuel', sort_order:1 },
+    { track:'technical', title:'Equipment confirmed and tested', priority:'non_negotiable', assigned_to:'Danilo', champion:'Manuel', sort_order:2 },
     { track:'technical', title:'Stage setup briefed', assigned_to:'Danilo', champion:'Manuel', sort_order:3 },
     { track:'technical', title:'Lighting briefed for atmosphere', assigned_to:'Danilo', champion:'Manuel', sort_order:4 },
     // Guest & Revenue
-    { track:'guest_revenue', title:'Covers target confirmed (50 guests)', assigned_to:'Alessandro', champion:'Francesco', sort_order:1 },
+    { track:'guest_revenue', title:'Covers target confirmed (50 guests)', priority:'non_negotiable', assigned_to:'Alessandro', champion:'Francesco', sort_order:1 },
     { track:'guest_revenue', title:'Invitations sent', assigned_to:'Alessandro', champion:'Francesco', sort_order:2 },
-    { track:'guest_revenue', title:'Ladies/atmosphere confirmed', assigned_to:'Alessandro', champion:'Manuel', sort_order:3 },
+    { track:'guest_revenue', title:'Ladies/atmosphere confirmed', priority:'enhancement', assigned_to:'Alessandro', champion:'Manuel', sort_order:3 },
     { track:'guest_revenue', title:'Reservations tracking updated', assigned_to:'Alessandro', champion:'Francesco', sort_order:4 },
     // Service
-    { track:'service', title:'Sequence of service briefed to team', assigned_to:'Manuel', champion:'Francesco', sort_order:1 },
-    { track:'service', title:'Service leader assigned for the night', assigned_to:'Manuel', champion:'Francesco', sort_order:2 },
-    { track:'service', title:'Casuals confirmed if required', assigned_to:'Manuel', champion:'Francesco', sort_order:3 },
+    { track:'service', title:'Sequence of service briefed to team', priority:'non_negotiable', assigned_to:'Manuel', champion:'Francesco', sort_order:1 },
+    { track:'service', title:'Service leader assigned for the night', priority:'non_negotiable', assigned_to:'Manuel', champion:'Francesco', sort_order:2 },
+    { track:'service', title:'Casuals confirmed if required', priority:'enhancement', assigned_to:'Manuel', champion:'Francesco', sort_order:3 },
     { track:'service', title:'Sommelier briefed on pairing narrative', assigned_to:'Manuel', champion:'Francesco', sort_order:4 },
     // Documents
-    { track:'documents', title:'Contract uploaded', assigned_to:'Manuel', champion:'Alessandro', sort_order:1 },
-    { track:'documents', title:'Permit/visa check completed', assigned_to:'Manuel', champion:'Alessandro', sort_order:2 },
+    { track:'documents', title:'Contract uploaded', priority:'non_negotiable', assigned_to:'Manuel', champion:'Alessandro', sort_order:1 },
+    { track:'documents', title:'Permit/visa check completed', priority:'non_negotiable', assigned_to:'Manuel', champion:'Alessandro', sort_order:2 },
   ];
 
   const rows = defaults.map(d=>({
@@ -1418,7 +1595,8 @@ async function seedDefaultTasks(weekId, eventId, eventName, eventDate){
     week_id: weekId,
     event_id: eventId,
     status:'not_started',
-    due_date: isoDateFromOffset(eventDate, dueByTrack[d.track] ?? -1)
+    due_date: isoDateFromOffset(eventDate, DUE_BY_TRACK[d.track] ?? -1),
+    description: taskDescription(d.priority || inferPriority(d))
   }));
   await sb.from('tasks').insert(rows);
 }
@@ -1429,6 +1607,7 @@ async function addTask(track, weekId, eventId){
   const assignEl = document.getElementById('new-assign-'+track);
   const champEl = document.getElementById('new-champion-'+track);
   const dateEl = document.getElementById('new-date-'+track);
+  const priorityEl = document.getElementById('new-priority-'+track);
   const title = titleEl?.value?.trim();
   if(!title){ toast('Please enter a task name',true); return; }
 
@@ -1436,6 +1615,7 @@ async function addTask(track, weekId, eventId){
     week_id: weekId, event_id: eventId, track,
     title, assigned_to: assignEl?.value||null,
     champion: champEl?.value||null,
+    description: taskDescription(priorityEl?.value||'important'),
     due_date: dateEl?.value||null,
     status: 'not_started',
     sort_order: (state.tasks[weekId]||[]).filter(t=>t.track===track).length+1
@@ -1455,8 +1635,7 @@ async function updateTaskStatus(taskId, status){
     const t = state.tasks[wid].find(t=>t.id===taskId);
     if(t){ t.status=status; break; }
   }
-  // re-render just dashboard counters without full reload
-  if(state.currentTab==='dashboard') renderMain();
+  renderMain();
 }
 
 async function deleteTask(taskId){
@@ -1516,6 +1695,14 @@ function openEditTask(taskId){
       </div>
     </div>
     <div class="form-group">
+      <label class="form-label">Priority</label>
+      <select class="form-select" id="edit-priority">
+        <option value="non_negotiable" ${getPriority(task)==='non_negotiable'?'selected':''}>Non-Negotiable</option>
+        <option value="important" ${getPriority(task)==='important'?'selected':''}>Important</option>
+        <option value="enhancement" ${getPriority(task)==='enhancement'?'selected':''}>Enhancement</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label class="form-label">Notes</label>
       <textarea class="form-textarea" id="edit-notes">${task.notes||''}</textarea>
     </div>
@@ -1539,6 +1726,7 @@ async function saveEditTask(taskId){
     due_date: document.getElementById('edit-date').value||null,
     status: document.getElementById('edit-status').value,
     notes: document.getElementById('edit-notes').value||null,
+    description: taskDescription(document.getElementById('edit-priority').value),
     doc_url: document.getElementById('edit-doc').value||null,
     updated_at: new Date().toISOString()
   };
@@ -1780,7 +1968,7 @@ function openWeekActuals(weekId){
 
   document.getElementById('modal-footer').innerHTML = `
     <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    <button class="btn btn-gold" onclick="saveActuals('${weekId}')">Save Actuals</button>`;
+    <button class="btn btn-gold" onclick="saveActuals('${weekId}')">Save Results</button>`;
 
   document.getElementById('modal-overlay').classList.add('open');
 }
@@ -1794,12 +1982,12 @@ async function saveActuals(weekId){
     notes: document.getElementById('act-notes').value||null
   };
   const { error } = await sb.from('weeks').update(updates).eq('id',weekId);
-  if(error){ toast('Error saving actuals',true); return; }
+  if(error){ toast('Error saving results',true); return; }
   for(const eid in state.weeks){
     const idx = state.weeks[eid].findIndex(w=>w.id===weekId);
     if(idx>-1){ state.weeks[eid][idx]={...state.weeks[eid][idx],...updates}; break; }
   }
-  closeModal(); toast('Actuals saved'); renderMain();
+  closeModal(); toast('Results saved'); renderMain();
 }
 
 // ── MODAL ──
