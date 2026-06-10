@@ -869,6 +869,13 @@
   .leader-task-card.s-done { border-left-color:var(--green); }
   .leader-task-card.s-blocked { border-left-color:var(--red); background:rgba(192,57,43,0.03); }
   .leader-event-label { display:inline-flex; align-items:center; background:rgba(107,31,42,0.08); border:1px solid rgba(107,31,42,0.16); color:var(--vino); font-size:9px; letter-spacing:0.16em; text-transform:uppercase; padding:3px 8px; margin-bottom:7px; font-weight:600; }
+  .leader-summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin:-6px 0 18px; }
+  .leader-summary-card { background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow); padding:12px 13px; cursor:pointer; }
+  .leader-summary-card:hover { border-color:var(--vino); }
+  .leader-summary-name { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--vino); font-weight:600; margin-bottom:8px; }
+  .leader-summary-total { font-family:'Playfair Display',serif; font-size:24px; color:var(--text); margin-bottom:7px; }
+  .leader-summary-breakdown { display:flex; flex-wrap:wrap; gap:5px; }
+  .leader-actions-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:12px; }
 
   /* finance track */
   .finance-row {
@@ -1445,7 +1452,10 @@ function renderDashboard(){
         <div class="event-card-stage">Stage ${stage.rank+1} of 5: ${stage.label}</div>
         <div style="margin:8px 0 4px"><div class="progress-bar" style="height:8px"><div class="progress-fill ${readiness.status}" style="width:${cardPct}%"></div></div></div>
         <div class="event-card-note">${doneCt}/${tasks.length} done | ${readiness.label}${nonOpen ? ` | ${nonOpen} non-negotiable open` : ''}${blocked ? ` | ${blocked} blocked` : ''}${nextDue ? ` | Next: ${fmtDate(nextDue.due_date)}` : ''}</div>
-        <button class="btn btn-gold btn-sm" onclick="switchTab('${eventTab(ev)}')">Open Journey</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-gold btn-sm" onclick="switchTab('${eventTab(ev)}')">Open Journey</button>
+          <button class="btn btn-outline btn-sm" onclick="resetEventTasks('${ev.id}')">Reset Event</button>
+        </div>
       </div>`);
   }
 
@@ -1482,6 +1492,20 @@ function renderDashboard(){
   const ownerChips = ['All', ...TEAM].map(name=>
     `<button class="filter-chip ${state.ownerFilter===name?'active':''}" onclick="setOwnerFilter('${name}')">${name}</button>`
   ).join('');
+  const leaderSummary = TEAM.map(name=>{
+    const tasks = allTasks.filter(t=>ownerMatches(t, name) && t.status!=='done');
+    const counts = Object.keys(PRIORITIES).reduce((acc,p)=>{ acc[p]=tasks.filter(t=>getPriority(t)===p).length; return acc; }, {});
+    return `
+      <div class="leader-summary-card" onclick="setOwnerFilter('${name}')">
+        <div class="leader-summary-name">${name}</div>
+        <div class="leader-summary-total">${tasks.length} pending</div>
+        <div class="leader-summary-breakdown">
+          <span class="priority-pill non_negotiable">${counts.non_negotiable} Non</span>
+          <span class="priority-pill important">${counts.important} Important</span>
+          <span class="priority-pill enhancement">${counts.enhancement} Enhance</span>
+        </div>
+      </div>`;
+  }).join('');
   const priorityChips = ['All', ...Object.keys(PRIORITIES)].map(priority=>{
     const label = priority==='All' ? 'All Priorities' : PRIORITIES[priority].label;
     const cls = priority==='All' ? '' : ' pr-'+priority;
@@ -1494,6 +1518,7 @@ function renderDashboard(){
   </div>
   ${tonightBanner}
   <div class="owner-filter" style="margin-bottom:18px">${ownerChips}</div>
+  <div class="leader-summary-grid">${leaderSummary}</div>
   <div class="leader-add-task">
     <input id="leader-task-title" placeholder="Add a task from Leaders">
     <select id="leader-task-event">${eventOptions.join('')}</select>
@@ -1515,7 +1540,10 @@ function renderDashboard(){
     </select>
     <button class="btn btn-gold btn-sm" onclick="addLeaderTask()">Add Task</button>
   </div>
-  <div class="section-header"><div class="section-title">Pending Jobs${activeLeader!=='All' ? ' | '+activeLeader : ''}</div></div>
+  <div class="leader-actions-row">
+    <div class="section-title">Pending Jobs${activeLeader!=='All' ? ' | '+activeLeader : ''}</div>
+    <button class="btn btn-outline btn-sm" onclick="resetLeaderTasks('${activeLeader}')">${activeLeader==='All' ? 'Reset All Leaders' : 'Reset '+activeLeader}</button>
+  </div>
   <div class="owner-filter" style="margin-bottom:12px">${priorityChips}</div>
   <div class="leader-task-list">${leaderList}</div>
   <div class="section-header"><div class="section-title">Needs Attention${activeLeader!=='All' ? ' | '+activeLeader : ''}</div></div>
@@ -1640,6 +1668,7 @@ function renderEventPage(ev){
     </select>
     <button class="btn btn-gold" onclick="newWeek('${ev.id}')">+ New Week</button>
     ${wid ? `<button class="btn btn-outline btn-sm" onclick="openWeekActuals('${wid}')">Enter Results</button>` : ''}
+    ${wid ? `<button class="btn btn-outline btn-sm" onclick="resetEventTasks('${ev.id}')">Reset Event</button>` : ''}
     <button class="btn btn-outline btn-sm" onclick="openEditEvent('${ev.id}')" title="Targets & budget â€” leadership only">âš™ Targets</button>
   </div>
 
@@ -2126,6 +2155,39 @@ async function updateTaskStatus(taskId, status){
     if(t){ t.status=status; break; }
   }
   renderMain();
+}
+
+async function resetTasksByIds(taskIds, label){
+  if(!taskIds.length){ toast('No tasks to reset'); return; }
+  if(!confirm(`Reset ${taskIds.length} task${taskIds.length===1?'':'s'} for ${label} to Not Started?`)) return;
+  const { error } = await sb.from('tasks').update({ status:'not_started', updated_at: new Date().toISOString() }).in('id', taskIds);
+  if(error){ toast('Error resetting tasks',true); return; }
+  for(const wid in state.tasks){
+    state.tasks[wid] = state.tasks[wid].map(t=> taskIds.includes(t.id) ? {...t, status:'not_started'} : t);
+  }
+  toast('Tasks reset');
+  renderMain();
+}
+
+function resetLeaderTasks(owner){
+  const ids = [];
+  for(const wid in state.tasks){
+    (state.tasks[wid]||[]).forEach(t=>{
+      if(ownerMatches(t, owner)) ids.push(t.id);
+    });
+  }
+  resetTasksByIds(ids, owner==='All' ? 'all leaders' : owner);
+}
+
+function resetEventTasks(eventId){
+  const ev = state.events.find(e=>e.id===eventId);
+  const ids = [];
+  for(const wid in state.tasks){
+    (state.tasks[wid]||[]).forEach(t=>{
+      if(t.event_id===eventId) ids.push(t.id);
+    });
+  }
+  resetTasksByIds(ids, ev?.name || 'this event');
 }
 
 async function deleteTask(taskId){
