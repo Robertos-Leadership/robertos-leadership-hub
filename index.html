@@ -1565,7 +1565,17 @@ function renderAddTaskBar(track, weekId, eventId, forcedStage=null){
   const key = forcedStage || track;
   return `
   <div class="add-task-bar">
-    <input type="text" placeholder="Type a task and press Enter — assign details later with ⋯" id="new-task-${key}" onkeydown="if(event.key==='Enter') addTask('${key}','${weekId}','${eventId}')" style="flex:1;min-width:200px">
+    <input type="text" placeholder="Type a task and press Enter" id="new-task-${key}" onkeydown="if(event.key==='Enter') addTask('${key}','${weekId}','${eventId}')" style="flex:2;min-width:180px">
+    <select id="new-assign-${key}" style="flex:1;max-width:150px">
+      <option value="">Who?</option>
+      ${TEAM.map(m=>`<option value="${m}">${m}</option>`).join('')}
+    </select>
+    <select id="new-status-${key}" style="flex:1;max-width:140px">
+      <option value="not_started" selected>Not Started</option>
+      <option value="in_progress">In Progress</option>
+      <option value="done">Done</option>
+      <option value="blocked">Blocked</option>
+    </select>
     <button class="btn btn-gold btn-sm" onclick="addTask('${key}','${weekId}','${eventId}')">Add</button>
   </div>`;
 }
@@ -1765,6 +1775,7 @@ async function seedDefaultTasks(weekId, eventId, eventName, eventDate){
 async function addTask(track, weekId, eventId){
   const titleEl = document.getElementById('new-task-'+track);
   const assignEl = document.getElementById('new-assign-'+track);
+  const statusEl = document.getElementById('new-status-'+track);
   const champEl = document.getElementById('new-champion-'+track);
   const dateEl = document.getElementById('new-date-'+track);
   const priorityEl = document.getElementById('new-priority-'+track);
@@ -1783,7 +1794,7 @@ async function addTask(track, weekId, eventId){
     champion: champEl?.value||null,
     description: taskDescription(priorityEl?.value||'important', stage),
     due_date: due,
-    status: 'not_started',
+    status: statusEl?.value || 'not_started',
     sort_order: (state.tasks[weekId]||[]).filter(t=>t.track===dbTrack).length+1
   }).select().single();
 
@@ -1792,6 +1803,8 @@ async function addTask(track, weekId, eventId){
   state.tasks[weekId].push(data);
   toast('Task added');
   renderMain();
+  const again = document.getElementById('new-task-'+track);
+  if(again) again.focus();
 }
 
 async function updateTaskStatus(taskId, status){
