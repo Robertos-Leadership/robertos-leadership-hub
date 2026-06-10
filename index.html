@@ -494,6 +494,48 @@
   .attention-card.blocked { border-left-color:var(--red); }
   .attention-title { font-size:13px; color:var(--text); margin-bottom:4px; }
   .attention-meta { font-size:11px; color:var(--text-light); line-height:1.5; }
+  .today-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 20px 22px;
+    margin-bottom: 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+  }
+  .today-title { font-family:'Playfair Display', serif; font-size:30px; color:var(--vino-dark); margin-bottom:5px; }
+  .today-note { font-size:12px; color:var(--text-mid); line-height:1.6; max-width:680px; }
+  .today-kpis { display:grid; grid-template-columns:repeat(4, minmax(92px, 1fr)); gap:10px; min-width:430px; }
+  .today-kpi { background:var(--surface2); border:1px solid var(--border); padding:11px 12px; }
+  .today-kpi-label { font-size:9px; letter-spacing:0.17em; text-transform:uppercase; color:var(--text-light); margin-bottom:4px; }
+  .today-kpi-value { font-family:'Playfair Display', serif; font-size:24px; color:var(--text); }
+  .today-grid { display:grid; grid-template-columns:minmax(0, 1.08fr) minmax(300px, 0.92fr); gap:16px; margin-bottom:24px; }
+  .today-panel { background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow); }
+  .today-panel-head { padding:13px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--surface2); }
+  .today-panel-title { font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--vino); font-weight:600; }
+  .today-panel-sub { font-size:11px; color:var(--text-light); }
+  .today-list { display:flex; flex-direction:column; }
+  .reason-row { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:12px; align-items:center; padding:13px 16px; border-bottom:1px solid rgba(107,31,42,0.08); }
+  .reason-row:last-child { border-bottom:none; }
+  .reason-row.blocked { border-left:3px solid var(--red); }
+  .reason-row.overdue { border-left:3px solid var(--amber); }
+  .reason-row.today { border-left:3px solid var(--gold); }
+  .reason-title { font-size:13px; color:var(--text); margin-bottom:5px; }
+  .reason-meta { font-size:11px; color:var(--text-light); line-height:1.5; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .reason-badges { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:6px; }
+  .reason-badge { display:inline-flex; align-items:center; border:1px solid var(--border); color:var(--text-mid); background:var(--surface2); padding:3px 7px; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; font-weight:600; }
+  .reason-badge.blocked { border-color:rgba(192,57,43,0.45); color:var(--red); background:rgba(192,57,43,0.08); }
+  .reason-badge.overdue { border-color:rgba(212,135,10,0.45); color:var(--amber); background:rgba(212,135,10,0.08); }
+  .reason-badge.today { border-color:rgba(201,168,76,0.55); color:var(--gold-dim); background:rgba(201,168,76,0.12); }
+  .reason-badge.non { border-color:rgba(192,57,43,0.35); color:var(--red); background:rgba(192,57,43,0.06); }
+  .event-status-line { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px; }
+  .event-status-chip { border:1px solid var(--border); background:var(--surface2); color:var(--text-mid); padding:4px 8px; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; font-weight:600; }
+  .event-status-chip.ready { border-color:rgba(45,122,79,0.35); color:var(--green); background:rgba(45,122,79,0.08); }
+  .event-status-chip.risk { border-color:rgba(212,135,10,0.38); color:var(--amber); background:rgba(212,135,10,0.08); }
+  .event-status-chip.blocked { border-color:rgba(192,57,43,0.4); color:var(--red); background:rgba(192,57,43,0.08); }
+  .next-action { font-size:11px; color:var(--text-mid); line-height:1.45; margin-top:5px; }
   .journey-strip { display:grid; grid-template-columns:repeat(5, 1fr); gap:1px; background:var(--border); border:1px solid var(--border); margin-bottom:18px; }
   .journey-step { background:var(--surface); border:0; cursor:pointer; padding:13px 10px; text-align:left; min-height:72px; font-family:'Inter',sans-serif; }
   .journey-step:hover { background:var(--surface2); }
@@ -1049,10 +1091,15 @@
     .landing-title {
       font-size: 48px;
     }
+    .today-hero { grid-template-columns:1fr; padding:18px 16px; }
+    .today-kpis { grid-template-columns:1fr 1fr; min-width:0; }
+    .today-grid { grid-template-columns:1fr; }
+    .reason-row { grid-template-columns:1fr; }
+    .reason-row .btn { width:100%; justify-content:center; }
     .journey-strip { grid-template-columns: 1fr 1fr; }
     .task-card { grid-template-columns: auto 1fr auto; }
-    .nav-tabs { position:fixed; bottom:0; left:0; right:0; background:var(--vino-dark); display:flex; z-index:60; box-shadow:0 -2px 12px rgba(44,24,16,0.3); }
-    .nav-tab { flex:1; text-align:center; padding:13px 4px 16px; font-size:10px; border-bottom:none; border-top:2px solid transparent; }
+    .nav-tabs { position:fixed; bottom:0; left:0; right:0; background:var(--vino-dark); display:flex; overflow-x:auto; z-index:60; box-shadow:0 -2px 12px rgba(44,24,16,0.3); }
+    .nav-tab { flex:0 0 auto; min-width:82px; text-align:center; justify-content:center; padding:13px 8px 16px; font-size:10px; border-bottom:none; border-top:2px solid transparent; }
     .nav-tab.active { border-top-color: var(--gold-light); border-bottom:none; }
     .main { padding-bottom: 96px; }
     .countdown-days { font-size:24px; }
@@ -1060,6 +1107,8 @@
     .stats-row { grid-template-columns: 1fr 1fr; }
     .add-task-bar { grid-template-columns: 1fr; }
     .leader-task-card { grid-template-columns: 1fr; }
+    .task-actions { justify-content:stretch; }
+    .task-actions .quick-action { flex:1; min-height:40px; }
     .task-row { grid-template-columns: 1fr; gap: 6px; }
     .task-row-header { display: none; }
     .finance-row { grid-template-columns: 1fr 1fr; }
@@ -1080,6 +1129,12 @@
     <div class="landing-sub">Weekly execution for Roberto's Dubai: events, standards, finance, and the decisions that keep Scala moving with intent.</div>
     <div class="landing-divider"></div>
     <div class="module-grid">
+      <div class="module-card" onclick="enterApp('today')">
+        <div class="module-tag">Live</div>
+        <div class="module-name">Today</div>
+        <div class="module-desc">Tonight, blocked items, and the next actions that need attention.</div>
+        <div class="module-badge">Open</div>
+      </div>
       <div class="module-card" onclick="enterApp('leaders')">
         <div class="module-tag">Live</div>
         <div class="module-name">Leaders</div>
@@ -1180,7 +1235,7 @@ let state = {
   tasks: {},      // weekId -> array of tasks
   finance: {},    // weekId -> array of expenses
   currentWeek: {},// eventId -> weekId
-  currentTab: 'dashboard',
+  currentTab: 'today',
   ownerFilter: 'All',
   leaderPriorityFilter: 'All',
   selectedStage: {}
@@ -1283,6 +1338,53 @@ function taskSort(a,b){
 function ownerMatches(task, owner){
   return owner==='All' || task.assigned_to===owner || task.champion===owner;
 }
+function activeWeekContext(){
+  const rows = [];
+  for(const ev of state.events){
+    const weekId = state.currentWeek[ev.id];
+    if(!weekId) continue;
+    const week = (state.weeks[ev.id]||[]).find(w=>w.id===weekId);
+    const tasks = state.tasks[weekId] || [];
+    const finance = state.finance[weekId] || [];
+    rows.push({ ev, week, weekId, tasks, finance });
+  }
+  return rows;
+}
+function allActiveTasks(){
+  return activeWeekContext().flatMap(ctx=>ctx.tasks.map(t=>({
+    ...t,
+    eventName: ctx.ev.name,
+    eventId: ctx.ev.id,
+    weekId: ctx.weekId,
+    weekDate: ctx.week?.week_date,
+    weekLabel: ctx.week?.week_label
+  })));
+}
+function attentionReasons(task){
+  const reasons = [];
+  if(task.status==='blocked') reasons.push({ key:'blocked', label:'Blocked' });
+  if(task.status!=='done' && isOverdue(task.due_date)) reasons.push({ key:'overdue', label:'Overdue' });
+  if(task.status!=='done' && isDueToday(task.due_date)) reasons.push({ key:'today', label:'Due Today' });
+  if(getPriority(task)==='non_negotiable' && task.status!=='done') reasons.push({ key:'non', label:'Non-Negotiable' });
+  return reasons;
+}
+function primaryAttentionKey(task){
+  const reasons = attentionReasons(task).map(r=>r.key);
+  if(reasons.includes('blocked')) return 'blocked';
+  if(reasons.includes('overdue')) return 'overdue';
+  if(reasons.includes('today')) return 'today';
+  return '';
+}
+function needsAttention(task){
+  return task.status==='blocked' || (getPriority(task)==='non_negotiable' && isOverdue(task.due_date)) || isDueToday(task.due_date);
+}
+function nextActionForTask(task){
+  if(task.status==='blocked') return 'Next action: unblock it or reassign ownership.';
+  if(isOverdue(task.due_date)) return 'Next action: complete it or move the due date.';
+  if(isDueToday(task.due_date)) return 'Next action: finish today.';
+  if(getPriority(task)==='non_negotiable') return 'Next action: clear this before enhancements.';
+  return 'Next action: keep it moving.';
+}
 function readinessForTasks(tasks){
   const non = tasks.filter(t=>getPriority(t)==='non_negotiable');
   const open = non.filter(t=>t.status!=='done');
@@ -1293,6 +1395,18 @@ function readinessForTasks(tasks){
   if(blocked.length){ status = 'not_ready'; label = 'Not Ready'; }
   else if(open.length){ status = 'at_risk'; label = 'At Risk'; }
   return { status, label, nonTotal: non.length, nonDone: done, nonOpen: open.length, nonBlocked: blocked.length, blockedTotal: allBlocked.length };
+}
+function readinessNote(readiness){
+  if(readiness.nonBlocked) return `${readiness.nonBlocked} critical blocked`;
+  if(readiness.nonOpen) return `${readiness.nonOpen} non-negotiable open`;
+  if(readiness.blockedTotal) return `${readiness.blockedTotal} blocked`;
+  return 'Critical tasks clear';
+}
+function eventStatusChips(readiness){
+  const cls = readiness.status==='ready' ? 'ready' : readiness.status==='not_ready' ? 'blocked' : 'risk';
+  return `
+    <span class="event-status-chip ${cls}">${readiness.label}</span>
+    <span class="event-status-chip">${readinessNote(readiness)}</span>`;
 }
 function setOwnerFilter(owner){
   state.ownerFilter = owner;
@@ -1312,16 +1426,17 @@ function eventTab(ev){ return 'event_'+ev.id; }
 function tabEventId(tab){ return tab && tab.startsWith('event_') ? tab.slice(6) : null; }
 function eventSort(a,b){ return (DAY_ORDER.indexOf(a.day_of_week)-DAY_ORDER.indexOf(b.day_of_week)) || a.name.localeCompare(b.name); }
 function resolveTab(tab){
-  if(tab==='dashboard' || tab==='leaders') return 'dashboard';
+  if(tab==='dashboard' || tab==='leaders') return 'leaders';
+  if(tab==='today') return 'today';
   if(tab==='listening'){
     const ev = state.events.find(e=>e.day_of_week==='Monday');
-    return ev ? eventTab(ev) : 'dashboard';
+    return ev ? eventTab(ev) : 'today';
   }
   if(tab==='jazz'){
     const ev = state.events.find(e=>e.day_of_week==='Tuesday');
-    return ev ? eventTab(ev) : 'dashboard';
+    return ev ? eventTab(ev) : 'today';
   }
-  return tab || 'dashboard';
+  return tab || 'today';
 }
 function renderNav(){
   const nav = document.getElementById('nav-tabs');
@@ -1330,7 +1445,9 @@ function renderNav(){
   const eventTabs = state.events.slice().sort(eventSort).map(ev=>
     `<div class="nav-tab ${active===eventTab(ev)?'active':''}" data-tab="${eventTab(ev)}" onclick="switchTab('${eventTab(ev)}')">${ev.name}</div>`
   ).join('');
-  nav.innerHTML = `<div class="nav-tab ${active==='dashboard'?'active':''}" data-tab="dashboard" onclick="switchTab('dashboard')">Leaders</div>${eventTabs}`;
+  nav.innerHTML = `<div class="nav-tab ${active==='today'?'active':''}" data-tab="today" onclick="switchTab('today')">Today</div><div class="nav-tab ${active==='leaders'?'active':''}" data-tab="leaders" onclick="switchTab('leaders')">Leaders</div>${eventTabs}`;
+  const section = document.getElementById('topbar-section');
+  if(section) section.textContent = active==='today' ? 'Today' : active==='leaders' ? 'Leaders' : 'Events';
 }
 function stageStats(tasks, stage){
   const stageTasks = tasks.filter(t=>getStage(t)===stage);
@@ -1354,11 +1471,12 @@ function enterApp(module){
   document.getElementById('landing').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   try{ localStorage.setItem('rl_inapp','1'); }catch(e){}
-  if(module==='leaders') switchTab('dashboard');
+  if(module==='today') switchTab('today');
+  else if(module==='leaders') switchTab('leaders');
   else if(module==='events'){
     const firstEvent = state.events.slice().sort(eventSort)[0];
-    switchTab(firstEvent ? eventTab(firstEvent) : 'dashboard');
-  } else switchTab(state.currentTab || 'dashboard');
+    switchTab(firstEvent ? eventTab(firstEvent) : 'today');
+  } else switchTab(state.currentTab || 'today');
 }
 function showLanding(){
   document.getElementById('landing').style.display = 'grid';
@@ -1406,12 +1524,136 @@ async function loadAll(){
 function renderMain(){
   const el = document.getElementById('main-content');
   if(state.events.length===0){ el.innerHTML='<div class="loading">Loading...</div>'; return; }
-  if(state.currentTab==='dashboard') el.innerHTML = renderDashboard();
+  if(state.currentTab==='today') el.innerHTML = renderToday();
+  else if(state.currentTab==='leaders') el.innerHTML = renderDashboard();
   else el.innerHTML = renderEventPage(state.events.find(e=>e.id===tabEventId(state.currentTab)));
   attachEventListeners();
 }
 
 // -- DASHBOARD --
+function renderAttentionRow(t, compact=false){
+  const reasons = attentionReasons(t);
+  const badges = reasons.map(r=>`<span class="reason-badge ${r.key}">${r.label}</span>`).join('');
+  const rowClass = primaryAttentionKey(t);
+  const ev = state.events.find(e=>e.id===t.eventId);
+  return `
+    <div class="reason-row ${rowClass}">
+      <div>
+        <div class="reason-badges">${badges}</div>
+        <div class="reason-title">${t.title}</div>
+        <div class="reason-meta">
+          <span>${t.eventName}</span>
+          <span>${stageLabel(getStage(t))}</span>
+          <span>${t.assigned_to||'Unassigned'}</span>
+          ${t.due_date ? `<span>Due ${fmtDate(t.due_date)}</span>` : ''}
+        </div>
+        ${compact ? '' : `<div class="next-action">${nextActionForTask(t)}</div>`}
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="switchTab('${ev ? eventTab(ev) : 'today'}')">Open</button>
+    </div>`;
+}
+
+function renderToday(){
+  const contexts = activeWeekContext();
+  const allTasks = allActiveTasks();
+  const openTasks = allTasks.filter(t=>t.status!=='done');
+  const urgent = openTasks.filter(needsAttention).sort(taskSort);
+  const blocked = openTasks.filter(t=>t.status==='blocked');
+  const dueToday = openTasks.filter(t=>isDueToday(t.due_date));
+  const overdue = openTasks.filter(t=>isOverdue(t.due_date));
+  const upcomingEvents = contexts
+    .map(ctx=>({ ...ctx, dleft: ctx.week ? daysUntil(ctx.week.week_date) : null }))
+    .filter(ctx=>ctx.dleft!==null)
+    .sort((a,b)=>a.dleft-b.dleft);
+  const tonightTomorrow = upcomingEvents.filter(ctx=>ctx.dleft>=0 && ctx.dleft<=1);
+  const nextEvents = (tonightTomorrow.length ? tonightTomorrow : upcomingEvents.slice(0,3));
+  const leaderLoad = TEAM.map(name=>({
+    name,
+    pending: openTasks.filter(t=>ownerMatches(t, name)).length,
+    urgent: urgent.filter(t=>ownerMatches(t, name)).length
+  })).sort((a,b)=>b.urgent-a.urgent || b.pending-a.pending).slice(0,5);
+
+  const eventCards = contexts.map(ctx=>{
+    const readiness = readinessForTasks(ctx.tasks);
+    const doneCt = ctx.tasks.filter(t=>t.status==='done').length;
+    const pct = ctx.tasks.length ? Math.round(doneCt/ctx.tasks.length*100) : 0;
+    const dleft = ctx.week ? daysUntil(ctx.week.week_date) : null;
+    const when = dleft===0 ? 'Tonight' : dleft===1 ? 'Tomorrow' : (dleft>1 ? `In ${dleft} days` : 'Event passed');
+    return `
+      <div class="event-journey-card">
+        <div class="event-card-top">
+          <div class="event-card-title">${ctx.ev.name}</div>
+          <div class="event-card-date">${ctx.week?.week_label || ctx.week?.week_date || ctx.ev.day_of_week}${when ? ' | '+when : ''}</div>
+        </div>
+        <div class="event-status-line">${eventStatusChips(readiness)}</div>
+        <div style="margin:8px 0 4px"><div class="progress-bar" style="height:8px"><div class="progress-fill ${readiness.status}" style="width:${pct}%"></div></div></div>
+        <div class="event-card-note">${doneCt}/${ctx.tasks.length} done | ${readinessNote(readiness)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-gold btn-sm" onclick="switchTab('${eventTab(ctx.ev)}')">Open Event</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  const nextEventRows = nextEvents.length ? nextEvents.map(ctx=>{
+    const readiness = readinessForTasks(ctx.tasks);
+    const label = ctx.dleft===0 ? 'Tonight' : ctx.dleft===1 ? 'Tomorrow' : `In ${ctx.dleft} days`;
+    return `
+      <div class="reason-row">
+        <div>
+          <div class="reason-badges">${eventStatusChips(readiness)}</div>
+          <div class="reason-title">${ctx.ev.name}</div>
+          <div class="reason-meta"><span>${label}</span><span>${ctx.week?.week_label || ctx.week?.week_date || ctx.ev.day_of_week}</span></div>
+          <div class="next-action">${readinessNote(readiness)}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="switchTab('${eventTab(ctx.ev)}')">Open</button>
+      </div>`;
+  }).join('') : '<div class="empty-state">No upcoming event weeks yet.</div>';
+
+  const urgentRows = urgent.slice(0,8).map(t=>renderAttentionRow(t)).join('') || '<div class="empty-state">No blocked, overdue, or due-today tasks.</div>';
+  const leaderRows = leaderLoad.map(row=>`
+    <div class="reason-row">
+      <div>
+        <div class="reason-title">${row.name}</div>
+        <div class="reason-meta"><span>${row.pending} pending</span><span>${row.urgent} urgent</span></div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="setOwnerFilter('${row.name}'); switchTab('leaders')">View</button>
+    </div>`).join('');
+
+  return `
+  <div class="today-hero">
+    <div>
+      <div class="today-title">Today</div>
+      <div class="today-note">A fast view of what needs action now: tonight's events, blocked work, due items, and readiness across the week.</div>
+    </div>
+    <div class="today-kpis">
+      <div class="today-kpi"><div class="today-kpi-label">Events</div><div class="today-kpi-value">${contexts.length}</div></div>
+      <div class="today-kpi"><div class="today-kpi-label">Blocked</div><div class="today-kpi-value">${blocked.length}</div></div>
+      <div class="today-kpi"><div class="today-kpi-label">Due Today</div><div class="today-kpi-value">${dueToday.length}</div></div>
+      <div class="today-kpi"><div class="today-kpi-label">Overdue</div><div class="today-kpi-value">${overdue.length}</div></div>
+    </div>
+  </div>
+  <div class="today-grid">
+    <div class="today-panel">
+      <div class="today-panel-head"><div><div class="today-panel-title">Action Required</div><div class="today-panel-sub">Blocked, overdue, and due-today work</div></div><button class="btn btn-outline btn-sm" onclick="switchTab('leaders')">Leaders</button></div>
+      <div class="today-list">${urgentRows}</div>
+    </div>
+    <div class="today-panel">
+      <div class="today-panel-head"><div><div class="today-panel-title">Next Events</div><div class="today-panel-sub">Tonight, tomorrow, or the next active weeks</div></div></div>
+      <div class="today-list">${nextEventRows}</div>
+    </div>
+  </div>
+  <div class="today-grid">
+    <div class="today-panel">
+      <div class="today-panel-head"><div><div class="today-panel-title">Event Readiness</div><div class="today-panel-sub">Why each event is ready, at risk, or blocked</div></div></div>
+      <div style="padding:14px"><div class="home-card-grid">${eventCards}</div></div>
+    </div>
+    <div class="today-panel">
+      <div class="today-panel-head"><div><div class="today-panel-title">Leader Load</div><div class="today-panel-sub">Who has the most work open</div></div></div>
+      <div class="today-list">${leaderRows}</div>
+    </div>
+  </div>`;
+}
+
 function renderDashboard(){
   let allTasks = [];
   const eventCards = [];
@@ -1444,8 +1686,9 @@ function renderDashboard(){
           <div class="event-card-date">${week?.week_label || week?.week_date || ev.day_of_week}${when ? ' | '+when : ''}</div>
         </div>
         <div class="event-card-stage">Stage ${stage.rank+1} of 5: ${stage.label}</div>
+        <div class="event-status-line">${eventStatusChips(readiness)}</div>
         <div style="margin:8px 0 4px"><div class="progress-bar" style="height:8px"><div class="progress-fill ${readiness.status}" style="width:${cardPct}%"></div></div></div>
-        <div class="event-card-note">${doneCt}/${tasks.length} done | ${readiness.label}${nonOpen ? ` | ${nonOpen} non-negotiable open` : ''}${blocked ? ` | ${blocked} blocked` : ''}${nextDue ? ` | Next: ${fmtDate(nextDue.due_date)}` : ''}</div>
+        <div class="event-card-note">${doneCt}/${tasks.length} done | ${readinessNote(readiness)}${nextDue ? ` | Next: ${fmtDate(nextDue.due_date)}` : ''}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-gold btn-sm" onclick="switchTab('${eventTab(ev)}')">Open Journey</button>
         </div>
@@ -1469,17 +1712,10 @@ function renderDashboard(){
     : '<div class="empty-state" style="background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow)">No pending tasks for this leader.</div>';
 
   const urgent = leaderTasks
-    .filter(t=>t.status==='blocked' || (getPriority(t)==='non_negotiable' && isOverdue(t.due_date)) || isDueToday(t.due_date))
+    .filter(needsAttention)
     .slice(0,6);
   const attention = urgent.length
-    ? urgent.map(t=>`
-      <div class="attention-card ${t.status==='blocked'?'blocked':''}">
-        <div>
-          <div class="attention-title">${t.title}</div>
-          <div class="attention-meta">${t.eventName} | ${stageLabel(getStage(t))} | ${priorityLabel(t)} | ${t.assigned_to||'Unassigned'} | ${fmtDate(t.due_date)}</div>
-        </div>
-        <button class="btn btn-outline btn-sm" onclick="switchTab('${eventTab(state.events.find(e=>e.id===t.eventId))}')">Open</button>
-      </div>`).join('')
+    ? urgent.map(t=>renderAttentionRow(t, true)).join('')
     : '<div class="empty-state" style="background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow)">No urgent action. Events are on track.</div>';
 
   const ownerChips = ['All', ...TEAM].map(name=>
@@ -1521,7 +1757,7 @@ function renderDashboard(){
   </div>
   <div class="owner-filter" style="margin-bottom:12px">${priorityChips}</div>
   <div class="leader-task-list">${leaderList}</div>
-  <div class="section-header"><div class="section-title">Needs Attention${activeLeader!=='All' ? ' | '+activeLeader : ''}</div></div>
+  <div class="section-header"><div class="section-title">Action Required${activeLeader!=='All' ? ' | '+activeLeader : ''}</div></div>
   <div class="attention-list">${attention}</div>
   <div class="section-header"><div class="section-title">This Week</div></div>
   <div class="home-card-grid">${eventCards.join('')}</div>`;
@@ -1605,7 +1841,7 @@ function renderEventPage(ev){
   <div class="event-countdown">
     <div class="countdown-days ${dleft===0?'tonight':''}">${cdLabel}</div>
     <div class="countdown-progress">
-      <div class="countdown-progress-label"><span>${doneCount} of ${tasks.length} tasks done</span><span>${pct}%</span></div>
+      <div class="countdown-progress-label"><span>${doneCount} of ${tasks.length} tasks done | ${readinessNote(readiness)}</span><span>${pct}%</span></div>
       <div class="progress-bar"><div class="progress-fill ${readiness.status}" style="width:${pct}%"></div></div>
     </div>
     <span class="readiness-value ${readiness.status}" style="font-size:18px">${readiness.label}</span>
@@ -1647,6 +1883,7 @@ function renderEventPage(ev){
         <div class="event-eyebrow">Journey to event | ${ev.day_of_week}s</div>
         <h2>${ev.name}</h2>
         <p>${week?.week_label || week?.week_date || 'Select or create a week'} | Stage ${STAGES[selectedStage].rank+1} of 5: ${STAGES[selectedStage].label}</p>
+        <div class="event-status-line">${eventStatusChips(readiness)}</div>
       </div>
       <div class="event-kpis">
         <div class="kpi"><div class="kpi-label">Readiness</div><div class="kpi-value">${readiness.label}</div></div>
@@ -2702,7 +2939,7 @@ function attachEventListeners(){ /* delegated via onclick */ }
     const leaderPriority = localStorage.getItem('rl_leader_priority');
     if(leaderPriority) state.leaderPriorityFilter = leaderPriority;
     if(localStorage.getItem('rl_inapp')==='1'){
-      const tab = localStorage.getItem('rl_tab') || 'dashboard';
+      const tab = localStorage.getItem('rl_tab') || 'today';
       state.currentTab = tab;
       document.getElementById('landing').style.display = 'none';
       document.getElementById('app').style.display = 'block';
