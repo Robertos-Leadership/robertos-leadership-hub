@@ -1148,6 +1148,7 @@ const STAGES = {
   review: { label:'Review', rank:4 }
 };
 const STAGE_KEYS = Object.keys(STAGES);
+const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const DUE_BY_TRACK = {
   marketing: -4,
   champion: -3,
@@ -1303,6 +1304,7 @@ function setStage(eventId, stage){
 }
 function eventTab(ev){ return 'event_'+ev.id; }
 function tabEventId(tab){ return tab && tab.startsWith('event_') ? tab.slice(6) : null; }
+function eventSort(a,b){ return (DAY_ORDER.indexOf(a.day_of_week)-DAY_ORDER.indexOf(b.day_of_week)) || a.name.localeCompare(b.name); }
 function resolveTab(tab){
   if(tab==='dashboard' || tab==='leaders') return 'dashboard';
   if(tab==='listening'){
@@ -1319,7 +1321,7 @@ function renderNav(){
   const nav = document.getElementById('nav-tabs');
   if(!nav) return;
   const active = resolveTab(state.currentTab);
-  const eventTabs = state.events.map(ev=>
+  const eventTabs = state.events.slice().sort(eventSort).map(ev=>
     `<div class="nav-tab ${active===eventTab(ev)?'active':''}" data-tab="${eventTab(ev)}" onclick="switchTab('${eventTab(ev)}')">${ev.name}</div>`
   ).join('');
   nav.innerHTML = `<div class="nav-tab ${active==='dashboard'?'active':''}" data-tab="dashboard" onclick="switchTab('dashboard')">Leaders</div>${eventTabs}`;
@@ -1363,7 +1365,7 @@ function switchTab(tab){
 // â”€â”€ DATA LOADING â”€â”€
 async function loadAll(){
   const { data: events } = await sb.from('events').select('*').order('created_at');
-  state.events = events || [];
+  state.events = (events || []).slice().sort(eventSort);
   const evIds = state.events.map(e=>e.id);
   const allWeeks = evIds.length
     ? (await sb.from('weeks').select('*').in('event_id', evIds).order('week_date',{ascending:false})).data || []
