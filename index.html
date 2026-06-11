@@ -1647,6 +1647,16 @@ function switchTab(tab){
 }
 
 // -- DATA LOADING --
+function pickDefaultWeekId(weeks){
+  if(!weeks || !weeks.length) return null;
+  const today = todayISO();
+  const upcoming = weeks
+    .filter(w=>w.week_date && w.week_date >= today)
+    .sort((a,b)=>a.week_date.localeCompare(b.week_date));
+  if(upcoming.length) return upcoming[0].id;
+  return weeks[0].id; // no upcoming: fall back to most recent
+}
+
 async function loadAll(){
   const { data: events } = await sb.from('events').select('*').order('created_at');
   state.events = (events || []).slice().sort(eventSort);
@@ -1656,8 +1666,9 @@ async function loadAll(){
     : [];
   for(const ev of state.events){
     state.weeks[ev.id] = allWeeks.filter(w=>w.event_id===ev.id);
-    if(state.weeks[ev.id].length && !state.currentWeek[ev.id]){
-      state.currentWeek[ev.id] = state.weeks[ev.id][0].id;
+    const stillExists = state.currentWeek[ev.id] && state.weeks[ev.id].some(w=>w.id===state.currentWeek[ev.id]);
+    if(state.weeks[ev.id].length && !stillExists){
+      state.currentWeek[ev.id] = pickDefaultWeekId(state.weeks[ev.id]);
     }
   }
   const wIds = allWeeks.map(w=>w.id);
@@ -1963,6 +1974,7 @@ function renderEventPage(ev){
     ${wid ? `<button class="btn btn-outline btn-sm" onclick="openWeekActuals('${wid}')">Enter Results</button>` : ''}
     ${wid ? `<button class="btn btn-outline btn-sm" onclick="resetEventTasks('${ev.id}')">Reset Tasks</button>` : ''}
     ${wid ? `<button class="btn btn-outline btn-sm" onclick="resetEventTasks('${ev.id}', true)">Reset Tasks + Responsibilities</button>` : ''}
+    ${wid ? `<button class="btn btn-outline btn-sm" style="color:var(--red);border-color:rgba(192,57,43,0.45)" onclick="deleteWeek('${wid}','${ev.id}')">Delete Week</button>` : ''}
     <button class="btn btn-outline btn-sm" onclick="openEditEvent('${ev.id}')" title="Targets & budget - leadership only">Targets</button>
   </div>
 
@@ -2253,6 +2265,27 @@ async function createNewWeek(eventId){
   state.tasks[data.id] = tasks||[];
   state.finance[data.id] = [];
   toast('New week created - '+label);
+  renderMain();
+}
+
+async function deleteWeek(weekId, eventId){
+  const week = (state.weeks[eventId]||[]).find(w=>w.id===weekId);
+  if(!week) return;
+  const tCount = (state.tasks[weekId]||[]).length;
+  const fCount = (state.finance[weekId]||[]).length;
+  const label = week.week_label || week.week_date;
+  if(!confirm(`Delete week "${label}"?\n\nThis permanently deletes ${tCount} task(s) and ${fCount} finance item(s) for this week. This cannot be undone.`)) return;
+  const t = await sb.from('tasks').delete().eq('week_id', weekId);
+  if(t.error){ toast('Error deleting week tasks', true); return; }
+  const f = await sb.from('finance').delete().eq('week_id', weekId);
+  if(f.error){ toast('Error deleting week finance', true); return; }
+  const w = await sb.from('weeks').delete().eq('id', weekId);
+  if(w.error){ toast('Error deleting week', true); return; }
+  state.weeks[eventId] = (state.weeks[eventId]||[]).filter(x=>x.id!==weekId);
+  delete state.tasks[weekId];
+  delete state.finance[weekId];
+  state.currentWeek[eventId] = pickDefaultWeekId(state.weeks[eventId]);
+  toast('Week deleted');
   renderMain();
 }
 
