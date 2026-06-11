@@ -3024,6 +3024,60 @@ function closeModalOnOverlay(e){
 // -- EVENT LISTENERS --
 function attachEventListeners(){ /* delegated via onclick */ }
 
+// -- LIVE SYNC --
+let syncChannel = null;
+let reloadTimer = null;
+let lastLoad = 0;
+let syncListenersAttached = false;
+
+function safeToRefresh(){
+  // Don't wipe the screen while someone is typing or has a modal open
+  const overlay = document.getElementById('modal-overlay');
+  if(overlay && overlay.classList.contains('open')) return false;
+  const ae = document.activeElement;
+  const main = document.getElementById('main-content');
+  if(ae && main && main.contains(ae) && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA' || ae.tagName==='SELECT')) return false;
+  return true;
+}
+
+function scheduleReload(){
+  clearTimeout(reloadTimer);
+  reloadTimer = setTimeout(()=>{
+    if(!safeToRefresh()){ scheduleReload(); return; }
+    lastLoad = Date.now();
+    loadAll();
+  }, 500);
+}
+
+function startRealtime(){
+  stopRealtime();
+  try{
+    syncChannel = sb.channel('hub-sync-' + Math.random().toString(36).slice(2));
+    ['events','weeks','tasks','finance'].forEach(t=>{
+      syncChannel.on('postgres_changes', { event:'*', schema:'public', table:t }, scheduleReload);
+    });
+    syncChannel.subscribe();
+  }catch(e){}
+}
+
+function stopRealtime(){
+  if(syncChannel){ try{ sb.removeChannel(syncChannel); }catch(e){} syncChannel = null; }
+}
+
+function maybeRefreshOnReturn(){
+  if(Date.now() - lastLoad < 15000) return;
+  if(!safeToRefresh()) return;
+  lastLoad = Date.now();
+  loadAll();
+}
+
+function attachSyncListeners(){
+  if(syncListenersAttached) return;
+  syncListenersAttached = true;
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) maybeRefreshOnReturn(); });
+  window.addEventListener('focus', maybeRefreshOnReturn);
+}
+
 // -- AUTH --
 function openChangePassword(){
   document.getElementById('modal-title').textContent = 'Change Password';
@@ -3088,7 +3142,10 @@ function restoreSession(){
 function startApp(){
   document.getElementById('login').classList.remove('open');
   restoreSession();
+  lastLoad = Date.now();
   loadAll();
+  startRealtime();
+  attachSyncListeners();
 }
 
 async function signIn(){
@@ -3110,6 +3167,7 @@ async function signIn(){
 }
 
 async function signOut(){
+  stopRealtime();
   try{ await sb.auth.signOut(); }catch(e){}
   try{ localStorage.removeItem('rl_inapp'); }catch(e){}
   showLogin();
