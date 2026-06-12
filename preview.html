@@ -673,6 +673,7 @@
     padding: 16px 18px;
     box-shadow: var(--shadow);
   }
+  .leader-summary-card.active { border: 1px solid var(--gold); box-shadow: 0 0 0 1px var(--gold); }
   .readiness-card.ready { border-left: 3px solid var(--green); }
   .readiness-card.at_risk { border-left: 3px solid var(--amber); }
   .readiness-card.not_ready { border-left: 3px solid var(--red); }
@@ -1876,9 +1877,6 @@ function renderDashboard(){
       </div>`).join('')
     : '<div class="empty-state" style="background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow)">No urgent action. Events are on track.</div>';
 
-  const ownerChips = ['All', ...TEAM].map(name=>
-    `<button class="filter-chip ${state.ownerFilter===name?'active':''}" onclick="setOwnerFilter('${name}')">${name}</button>`
-  ).join('');
   // all-time done counts across every loaded week
   const allTimeDone = {};
   for(const wid in state.tasks){
@@ -1893,7 +1891,7 @@ function renderDashboard(){
     const doneAll = allTimeDone[name]||0;
     const counts = Object.keys(PRIORITIES).reduce((acc,p)=>{ acc[p]=tasks.filter(t=>getPriority(t)===p).length; return acc; }, {});
     return `
-      <div class="leader-summary-card" onclick="setOwnerFilter('${name}')">
+      <div class="leader-summary-card ${state.ownerFilter===name?'active':''}" onclick="setOwnerFilter(state.ownerFilter==='${name}' ? 'All' : '${name}')">
         <div class="leader-summary-name">${name}</div>
         <div class="leader-summary-total">${tasks.length} pending</div>
         <div class="leader-summary-done">&check; ${doneWeek} done this week &middot; ${doneAll} total</div>
@@ -1923,11 +1921,14 @@ function renderDashboard(){
     </div>
   </div>
   ${tonightBanner}
-  <div class="owner-filter" style="margin-bottom:18px">${ownerChips}</div>
+  <div class="section-header"><div class="section-title">This Week</div></div>
+  <div class="home-card-grid">${eventCards.join('')}</div>
+  <div class="section-header" style="margin-top:26px"><div class="section-title">Team</div></div>
   <div class="leader-summary-grid">${leaderSummary}</div>
   <div class="leader-actions-row">
     <div class="section-title">Pending Jobs${activeLeader!=='All' ? ' | '+activeLeader : ''}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${activeLeader!=='All' ? `<button class="btn btn-outline btn-sm" onclick="setOwnerFilter('All')">Show All</button>` : ''}
       <button class="btn btn-gold btn-sm" onclick="openLeaderAddTask()">+ Add Task</button>
       <button class="btn btn-outline btn-sm" onclick="openLeaderActions('${activeLeader}')">More Actions</button>
     </div>
@@ -1935,9 +1936,7 @@ function renderDashboard(){
   <div class="owner-filter" style="margin-bottom:12px">${priorityChips}</div>
   <div class="leader-task-list">${leaderList}</div>
   <div class="section-header"><div class="section-title">Needs Attention${activeLeader!=='All' ? ' | '+activeLeader : ''}</div></div>
-  <div class="attention-list">${attention}</div>
-  <div class="section-header"><div class="section-title">This Week</div></div>
-  <div class="home-card-grid">${eventCards.join('')}</div>`;
+  <div class="attention-list">${attention}</div>`;
 }
 function openTonight(eventId){
   const ev = state.events.find(e=>e.id===eventId);
