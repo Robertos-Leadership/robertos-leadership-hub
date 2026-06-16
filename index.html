@@ -810,6 +810,22 @@
   .rv2-net-calc { font-size:12px; color:var(--text-light); margin-top:3px; }
   .rv2-net-v { font-family:'Playfair Display',serif; font-size:34px; line-height:1; }
   .rv2-net.good .rv2-net-v { color:var(--green); } .rv2-net.bad .rv2-net-v { color:var(--red); }
+  /* P&L cascade */
+  .rv2-pl { border:1px solid var(--border); margin:18px 0 4px; background:var(--surface); }
+  .rv2-pl-row { display:flex; align-items:center; justify-content:space-between; padding:11px 18px; font-size:13px; color:var(--text-mid); }
+  .rv2-pl-row + .rv2-pl-row { border-top:1px solid var(--border); }
+  .rv2-pl-row .v { font-variant-numeric:tabular-nums; font-weight:600; color:var(--vino); }
+  .rv2-pl-row .v.neg { color:var(--text-mid); font-weight:400; }
+  .rv2-pl-row .mut { color:var(--text-light); font-size:11px; }
+  .rv2-pl-row.sub { background:var(--surface2); font-size:12px; }
+  .rv2-pl-row.gross { background:var(--surface2); border-top:2px solid var(--border-strong); }
+  .rv2-pl-row.gross span:first-child { font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--vino); font-weight:600; }
+  .rv2-pl-row.gross .v { font-family:'Playfair Display',serif; font-size:22px; font-weight:400; }
+  .rv2-pl-row.gross.good .v { color:var(--green); } .rv2-pl-row.gross.bad .v { color:var(--red); }
+  .rv2-pl-row.net { border-top:2px solid var(--border-strong); }
+  .rv2-pl-row.net span:first-child { font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--vino); font-weight:600; }
+  .rv2-pl-row.net .v { font-family:'Playfair Display',serif; font-size:30px; font-weight:400; }
+  .rv2-pl-row.net.good .v { color:var(--green); } .rv2-pl-row.net.bad .v { color:var(--red); }
   @media(max-width:760px){
     .rv2-bignum .n { font-size:40px; }
     .rv2-stat { min-width:50%; border-bottom:1px solid var(--border); }
@@ -1567,6 +1583,8 @@ const PRIORITIES = {
   important: { label:'Important', rank:1 },
   enhancement: { label:'Enhancement', rank:2 }
 };
+const FOOD_COST_PCT = 0.28;
+const BEV_COST_PCT = 0.26;
 const STAGES = {
   plan: { label:'Plan', rank:0 },
   promote: { label:'Promote', rank:1 },
@@ -2343,7 +2361,12 @@ function renderReviewPanel(ev, week, tasks, fin, weekId){
   const actualRevenue = savedRevenue || (actualCovers && savedAvg ? actualCovers * savedAvg : 0);
   const actualAvg = savedAvg || (actualCovers && actualRevenue ? actualRevenue / actualCovers : 0);
   const expenses = fin.reduce((s,f)=>s+(Number(f.amount)||0),0);
-  const net = actualRevenue - expenses;
+  const foodCost = foodRev * FOOD_COST_PCT;
+  const bevCost = bevRev * BEV_COST_PCT;
+  const fbCost = foodCost + bevCost;
+  const grossProfit = actualRevenue - fbCost;
+  const net = grossProfit - expenses;
+  const grossClass = grossProfit >= 0 ? 'good' : 'bad';
   const revenueDelta = actualRevenue - targetRev;
   const taskDone = tasks.filter(t=>t.status==='done').length;
   const taskBlocked = tasks.filter(t=>t.status==='blocked').length;
@@ -2414,17 +2437,17 @@ function renderReviewPanel(ev, week, tasks, fin, weekId){
         ${bevRev?`<span class="bev" style="width:${bPct}%">${bPct>=12?'Bev '+bPct+'%':''}</span>`:''}
       </div>
       <div class="rv2-mixlegend">
-        <span><i class="food"></i>Food ${fmt(foodRev)}</span>
-        <span><i class="bev"></i>Beverage ${fmt(bevRev)}</span>
+        <span><i class="food"></i>Food ${fmt(foodRev)} <span style="color:var(--text-light)">· cost ${fmt(Math.round(foodCost))} (${Math.round(FOOD_COST_PCT*100)}%)</span></span>
+        <span><i class="bev"></i>Beverage ${fmt(bevRev)} <span style="color:var(--text-light)">· cost ${fmt(Math.round(bevCost))} (${Math.round(BEV_COST_PCT*100)}%)</span></span>
         ${compRev?`<span><i class="comp"></i>Complimentary ${fmt(compRev)} (memo, not in total)</span>`:''}
       </div>` : ''}
 
-      <div class="rv2-net ${actualRevenue?netClass:''}">
-        <div>
-          <div class="rv2-net-l">Net After Expenses</div>
-          <div class="rv2-net-calc">${fmt(actualRevenue)} revenue − ${fmt(expenses)} expenses (${fin.length} item${fin.length===1?'':'s'})</div>
-        </div>
-        <div class="rv2-net-v">${actualRevenue ? fmt(net) : '—'}</div>
+      <div class="rv2-pl">
+        <div class="rv2-pl-row"><span>Revenue · Scala + Bar</span><span class="v">${fmt(actualRevenue)}</span></div>
+        <div class="rv2-pl-row sub"><span>Less F&amp;B cost <span class="mut">(food ${Math.round(FOOD_COST_PCT*100)}% · bev ${Math.round(BEV_COST_PCT*100)}%)</span></span><span class="v neg">− ${fmt(Math.round(fbCost))}</span></div>
+        <div class="rv2-pl-row gross ${actualRevenue?grossClass:''}"><span>Gross Profit</span><span class="v">${actualRevenue ? fmt(Math.round(grossProfit)) : '—'}<span class="mut" style="font-weight:400"> ${actualRevenue?'· '+Math.round(grossProfit/actualRevenue*100)+'% margin':''}</span></span></div>
+        <div class="rv2-pl-row sub"><span>Less expenses <span class="mut">(${fin.length} item${fin.length===1?'':'s'})</span></span><span class="v neg">− ${fmt(expenses)}</span></div>
+        <div class="rv2-pl-row net ${actualRevenue?netClass:''}"><span>Net After Expenses</span><span class="v">${actualRevenue ? fmt(Math.round(net)) : '—'}</span></div>
       </div>
 
       ${week?.notes ? `<div style="margin-top:14px;padding:13px 15px;border:1px solid var(--border);background:var(--surface)"><div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-light);margin-bottom:6px">Review Notes</div><div style="font-size:12px;color:var(--text-mid);line-height:1.5">${week.notes}</div></div>` : ''}
@@ -2480,7 +2503,8 @@ function openWeekReport(eventId){
     const revenue = savedRevenue || (covers && savedAvg ? covers * savedAvg : 0);
     const avg = savedAvg || (covers && revenue ? revenue / covers : 0);
     const expenses = fin.reduce((s,f)=>s+(Number(f.amount)||0),0);
-    const net = revenue - expenses;
+    const fbCost = (Number(w.food_revenue)||0)*FOOD_COST_PCT + (Number(w.beverage_revenue)||0)*BEV_COST_PCT;
+    const net = revenue - fbCost - expenses;
     const done = tasks.filter(t=>t.status==='done').length;
     const pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
     return `
