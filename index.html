@@ -763,6 +763,71 @@
   .review-note { font-size:11px; color:var(--text-light); margin-top:6px; line-height:1.45; }
   .review-actions { display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 14px; }
   .review-split { display:grid; grid-template-columns:1fr; gap:12px; }
+  /* -- Review verdict + tiered layout -- */
+  .rv-verdict {
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+    padding:16px 20px; margin:12px 0 18px; border-left:4px solid var(--text-light);
+    background:var(--surface2);
+  }
+  .rv-verdict.good { border-left-color:var(--green); background:rgba(45,122,79,0.07); }
+  .rv-verdict.warn { border-left-color:var(--amber); background:rgba(212,135,10,0.08); }
+  .rv-verdict.bad  { border-left-color:var(--red);   background:rgba(192,57,43,0.07); }
+  .rv-verdict.empty{ border-left-color:var(--border-strong); }
+  .rv-verdict-main { display:flex; flex-direction:column; gap:3px; }
+  .rv-verdict-tag {
+    font-size:10px; letter-spacing:0.2em; text-transform:uppercase; font-weight:600;
+    color:var(--text-light);
+  }
+  .rv-verdict.good .rv-verdict-tag { color:var(--green); }
+  .rv-verdict.warn .rv-verdict-tag { color:var(--amber); }
+  .rv-verdict.bad  .rv-verdict-tag { color:var(--red); }
+  .rv-verdict-headline { font-family:'Playfair Display',serif; font-size:26px; color:var(--vino-dark); }
+  .rv-verdict-sub { font-size:12px; color:var(--text-mid); }
+  .rv-verdict-pct { text-align:right; }
+  .rv-verdict-pct .n { font-family:'Playfair Display',serif; font-size:40px; line-height:1; color:var(--vino-dark); }
+  .rv-verdict.good .rv-verdict-pct .n { color:var(--green); }
+  .rv-verdict.bad  .rv-verdict-pct .n { color:var(--red); }
+  .rv-verdict-pct .l { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-light); margin-top:4px; }
+
+  .rv-tier-label { font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-light); margin:18px 0 9px; font-weight:600; }
+
+  .rv-hero {
+    display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:0;
+    border:1px solid var(--border); background:var(--surface); margin-bottom:4px;
+  }
+  .rv-hero-main { padding:18px 22px; border-right:1px solid var(--border); background:var(--surface2); }
+  .rv-hero-main .lbl { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--vino); font-weight:600; margin-bottom:8px; }
+  .rv-hero-main .val { font-family:'Playfair Display',serif; font-size:38px; color:var(--vino-dark); line-height:1; }
+  .rv-hero-main .sub { font-size:12px; color:var(--text-mid); margin-top:8px; }
+  .rv-hero-cell { padding:18px 20px; border-right:1px solid var(--border); }
+  .rv-hero-cell:last-child { border-right:none; }
+  .rv-hero-cell .lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-light); margin-bottom:7px; }
+  .rv-hero-cell .val { font-family:'Playfair Display',serif; font-size:22px; color:var(--vino); }
+  .rv-hero-cell .sub { font-size:11px; color:var(--text-light); margin-top:5px; }
+
+  .rv-breakdown { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:4px; }
+  .rv-bd-card { background:var(--surface2); border:1px solid var(--border); padding:13px 15px; }
+  .rv-bd-card .lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-light); margin-bottom:6px; }
+  .rv-bd-card .val { font-family:'Playfair Display',serif; font-size:21px; color:var(--vino); }
+  .rv-bd-bar { height:4px; background:var(--surface3); margin-top:9px; position:relative; overflow:hidden; }
+  .rv-bd-bar > i { position:absolute; left:0; top:0; bottom:0; background:var(--gold); display:block; }
+  .rv-bd-card .pct { font-size:11px; color:var(--text-light); margin-top:6px; }
+
+  .rv-outcome { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .rv-oc-card { background:var(--surface2); border:1px solid var(--border); padding:13px 15px; border-top:3px solid var(--border-strong); }
+  .rv-oc-card.good { border-top-color:var(--green); }
+  .rv-oc-card.warn { border-top-color:var(--amber); }
+  .rv-oc-card.bad  { border-top-color:var(--red); }
+  .rv-oc-card .lbl { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-light); margin-bottom:6px; }
+  .rv-oc-card .val { font-family:'Playfair Display',serif; font-size:22px; color:var(--vino); }
+  .rv-oc-card.good .val { color:var(--green); }
+  .rv-oc-card.bad .val { color:var(--red); }
+  .rv-oc-card .sub { font-size:11px; color:var(--text-light); margin-top:5px; }
+  @media(max-width:760px){
+    .rv-hero { grid-template-columns:1fr 1fr; }
+    .rv-hero-main { grid-column:1/-1; border-right:none; border-bottom:1px solid var(--border); }
+    .rv-breakdown, .rv-outcome { grid-template-columns:1fr 1fr; }
+  }
 
   .overdue-flag {
     display: inline-flex;
@@ -2305,12 +2370,26 @@ function renderReviewPanel(ev, week, tasks, fin, weekId){
     ? `${actualCovers || '-'} covers at ${fmt(actualAvg)} average spend`
     : 'Enter results to calculate actual revenue';
 
+  const pctOfTarget = actualRevenue && targetRev ? Math.round(actualRevenue/targetRev*100) : 0;
+  let verdictClass = 'empty', verdictTag = 'Awaiting Results', verdictHead = 'No results entered yet', verdictSub = 'Tap Enter Results to record the night.';
+  if(actualRevenue){
+    if(pctOfTarget >= 100){ verdictClass='good'; verdictTag='Target Achieved'; }
+    else if(pctOfTarget >= 85){ verdictClass='warn'; verdictTag='Just Below Target'; }
+    else { verdictClass='bad'; verdictTag='Below Target'; }
+    const gap = revenueDelta>=0 ? `AED ${Math.round(revenueDelta).toLocaleString()} over target` : `AED ${Math.abs(Math.round(revenueDelta)).toLocaleString()} short of target`;
+    verdictHead = `${fmt(actualRevenue)} on the night`;
+    verdictSub = `${actualCovers||'-'} covers · ${fmt(actualAvg)} avg spend · ${gap}`;
+  }
+  const maxBd = Math.max(foodRev, bevRev, compRev, 1);
+  const bdPct = v => Math.round(v/maxBd*100);
+  const ofRev = v => v && actualRevenue ? Math.round(v/actualRevenue*100)+'% of revenue' : 'Net of VAT';
+
   return `
     <div id="review-panel" class="budget-panel">
       <div class="section-header" style="margin-bottom:8px">
         <div>
           <div class="section-title">Review Summary</div>
-          <div class="section-sub">Financial result, expenses, and execution close-out for this event night.</div>
+          <div class="section-sub">How the night performed against target, and the bottom line.</div>
         </div>
       </div>
       <div class="review-actions">
@@ -2318,50 +2397,83 @@ function renderReviewPanel(ev, week, tasks, fin, weekId){
         <button class="btn btn-outline btn-sm" onclick="openAddFinance('${weekId}','${ev.id}')">Add Expense</button>
         <button class="btn btn-outline btn-sm" onclick="openWeekReport('${ev.id}')">Report</button>
       </div>
-      <div class="review-grid">
-        <div class="review-card ${revenueClass}">
-          <div class="review-label">Scala + Bar Revenue</div>
-          <div class="review-value">${fmt(actualRevenue)}</div>
-          <div class="review-note">${actualNote}</div>
+
+      <div class="rv-verdict ${verdictClass}">
+        <div class="rv-verdict-main">
+          <div class="rv-verdict-tag">${verdictTag}</div>
+          <div class="rv-verdict-headline">${verdictHead}</div>
+          <div class="rv-verdict-sub">${verdictSub}</div>
         </div>
-        <div class="review-card">
-          <div class="review-label">Food Revenue</div>
-          <div class="review-value">${foodRev ? fmt(foodRev) : '-'}</div>
-          <div class="review-note">${foodRev && actualRevenue ? Math.round(foodRev/actualRevenue*100)+'% of revenue' : 'Net of VAT'}</div>
+        ${actualRevenue ? `<div class="rv-verdict-pct"><div class="n">${pctOfTarget}%</div><div class="l">of target</div></div>` : ''}
+      </div>
+
+      <div class="rv-tier-label">The Result</div>
+      <div class="rv-hero">
+        <div class="rv-hero-main">
+          <div class="lbl">Scala + Bar · Total</div>
+          <div class="val">${fmt(actualRevenue)}</div>
+          <div class="sub">${actualNote}</div>
         </div>
-        <div class="review-card">
-          <div class="review-label">Beverage Revenue</div>
-          <div class="review-value">${bevRev ? fmt(bevRev) : '-'}</div>
-          <div class="review-note">${bevRev && actualRevenue ? Math.round(bevRev/actualRevenue*100)+'% of revenue' : 'Net of VAT'}</div>
+        <div class="rv-hero-cell">
+          <div class="lbl">Target Revenue</div>
+          <div class="val">${fmt(targetRev)}</div>
+          <div class="sub">${targetCovers} cov · ${fmt(targetAvg)} spend</div>
         </div>
-        <div class="review-card">
-          <div class="review-label">Complimentary</div>
-          <div class="review-value">${compRev ? fmt(compRev) : '-'}</div>
-          <div class="review-note">${compRev && actualRevenue ? Math.round(compRev/actualRevenue*100)+'% of revenue' : 'Net of VAT'}</div>
-        </div>
-        <div class="review-card">
-          <div class="review-label">Target Revenue</div>
-          <div class="review-value">${fmt(targetRev)}</div>
-          <div class="review-note">${targetCovers} covers at ${fmt(targetAvg)} target spend</div>
-        </div>
-        <div class="review-card ${revenueDelta >= 0 ? 'good' : 'warn'}">
-          <div class="review-label">Revenue vs Target</div>
-          <div class="review-value">${actualRevenue ? fmt(revenueDelta) : '-'}</div>
-          <div class="review-note">${actualRevenue && targetRev ? Math.round(actualRevenue/targetRev*100) : 0}% of target</div>
-        </div>
-        <div class="review-card warn">
-          <div class="review-label">Expenses</div>
-          <div class="review-value">${fmt(expenses)}</div>
-          <div class="review-note">${fin.length} expense item${fin.length===1?'':'s'}${actualRevenue ? ` | ${expenseShare}% of revenue` : ''}</div>
-        </div>
-        <div class="review-card ${netClass}">
-          <div class="review-label">Net After Expenses</div>
-          <div class="review-value">${actualRevenue ? fmt(net) : '-'}</div>
-          <div class="review-note">Revenue minus listed expenses</div>
+        <div class="rv-hero-cell">
+          <div class="lbl">vs Target</div>
+          <div class="val" style="color:${!actualRevenue?'var(--text-light)':(revenueDelta>=0?'var(--green)':'var(--red)')}">${actualRevenue ? (revenueDelta>=0?'+':'−')+'AED '+Math.abs(Math.round(revenueDelta)).toLocaleString() : '—'}</div>
+          <div class="sub">${pctOfTarget}% of target</div>
         </div>
       </div>
-      ${week?.notes ? `<div class="review-card" style="margin-bottom:14px"><div class="review-label">Review Notes</div><div class="review-note" style="font-size:12px;color:var(--text-mid)">${week.notes}</div></div>` : ''}
-      <div class="section-header" style="margin:4px 0 8px"><div class="section-title">Expenses</div></div>
+
+      <div class="rv-tier-label">Revenue Breakdown</div>
+      <div class="rv-breakdown">
+        <div class="rv-bd-card">
+          <div class="lbl">Food</div>
+          <div class="val">${foodRev ? fmt(foodRev) : '—'}</div>
+          <div class="rv-bd-bar"><i style="width:${bdPct(foodRev)}%"></i></div>
+          <div class="pct">${ofRev(foodRev)}</div>
+        </div>
+        <div class="rv-bd-card">
+          <div class="lbl">Beverage</div>
+          <div class="val">${bevRev ? fmt(bevRev) : '—'}</div>
+          <div class="rv-bd-bar"><i style="width:${bdPct(bevRev)}%"></i></div>
+          <div class="pct">${ofRev(bevRev)}</div>
+        </div>
+        <div class="rv-bd-card">
+          <div class="lbl">Complimentary</div>
+          <div class="val">${compRev ? fmt(compRev) : '—'}</div>
+          <div class="rv-bd-bar"><i style="width:${bdPct(compRev)}%"></i></div>
+          <div class="pct">${compRev ? ofRev(compRev)+' (memo)' : 'Comp value'}</div>
+        </div>
+      </div>
+
+      <div class="rv-tier-label">Bottom Line</div>
+      <div class="rv-outcome">
+        <div class="rv-oc-card">
+          <div class="lbl">Revenue</div>
+          <div class="val">${fmt(actualRevenue)}</div>
+          <div class="sub">Net of VAT</div>
+        </div>
+        <div class="rv-oc-card warn">
+          <div class="lbl">Expenses</div>
+          <div class="val">${fmt(expenses)}</div>
+          <div class="sub">${fin.length} item${fin.length===1?'':'s'}${actualRevenue?` · ${expenseShare}% of rev`:''}</div>
+        </div>
+        <div class="rv-oc-card ${actualRevenue?netClass:''}">
+          <div class="lbl">Net After Expenses</div>
+          <div class="val">${actualRevenue ? fmt(net) : '—'}</div>
+          <div class="sub">Revenue − expenses</div>
+        </div>
+        <div class="rv-oc-card ${!actualRevenue?'':(revenueDelta>=0?'good':'bad')}">
+          <div class="lbl">vs Target</div>
+          <div class="val">${actualRevenue ? (revenueDelta>=0?'+':'−')+'AED '+Math.abs(Math.round(revenueDelta)).toLocaleString() : '—'}</div>
+          <div class="sub">${pctOfTarget}% of target</div>
+        </div>
+      </div>
+
+      ${week?.notes ? `<div class="rv-bd-card" style="margin-top:14px;background:var(--surface)"><div class="lbl" style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-light);margin-bottom:6px">Review Notes</div><div style="font-size:12px;color:var(--text-mid);line-height:1.5">${week.notes}</div></div>` : ''}
+      <div class="section-header" style="margin:18px 0 8px"><div class="section-title">Expenses</div></div>
       ${renderFinanceTrack(fin, weekId, ev.id)}
     </div>`;
 }
