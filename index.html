@@ -5284,16 +5284,11 @@ function fohSignOut(){
   try{
     // Always show public FOH app first
     showFohPublic();
-    // If manager was in the management app, restore their session
+    // Always clear manager restore flag — FOH public is always the default landing
+    try{ localStorage.removeItem('rl_inapp'); }catch(e){}
     const { data } = await sb.auth.getSession();
     if(data && data.session){
       state.userEmail = data.session.user?.email || null;
-      if(localStorage.getItem('rl_inapp')==='1'){
-        // They were in the management app — restore it
-        document.getElementById('foh-public').style.display = 'none';
-        document.getElementById('foh-nav').style.display = 'none';
-        startApp();
-      }
     }
     sb.auth.onAuthStateChange((event)=>{
       if(event==='SIGNED_OUT') showFohPublic();
