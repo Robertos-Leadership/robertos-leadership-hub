@@ -1881,7 +1881,7 @@
   .sch-emp-id{display:block;font-size:9px;color:#b9ab9c;cursor:pointer;margin-top:2px;letter-spacing:1.2px;font-weight:500}
   .sch-emp-id:hover{color:var(--vino)}
   .sch-shift.actual{background:#e8f0e9;color:#2f5233;border:1px solid #a9c9b0;font-weight:600}
-  .sch-shift.actual-live{background:#eaf2ec;color:#3a6b47;border:1px dashed #8fbf9e}
+  .sch-shift.actual-live{background:#eaf2ec;color:#1f5130;border:1px dashed #8fbf9e;font-weight:700}
   .sch-shift.actual-open-flag{background:#fbe9e7;color:#a8342a;border:1px solid #e8a89f;font-weight:600;cursor:pointer}
   .sch-shift.actual-open-flag:hover{box-shadow:0 0 0 2px #c0392b}
   .sch-shift.actual-absent{background:#fdf3e3;color:#9a6a1e;border:1px solid #e6c98f}
@@ -2376,6 +2376,15 @@ function enterApp(module){
   document.getElementById('landing').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   try{ localStorage.setItem('rl_inapp','1'); }catch(e){}
+  // If the user reached the manager area via an existing session
+  // (showManagerLanding) rather than a fresh login (startApp), the data was
+  // never loaded — without this the events page sits on "Loading…" forever.
+  if(!state.events.length){
+    lastLoad = Date.now();
+    loadAll();
+    startRealtime();
+    attachSyncListeners();
+  }
   switchTab(state.currentTab || 'dashboard');
 }
 function showLanding(){
@@ -4244,14 +4253,8 @@ async function signIn(){
   startApp();
 }
 
-async function signOut(){
-  stopRealtime();
-  try{ await sb.auth.signOut(); }catch(e){}
-  try{ localStorage.removeItem('rl_inapp'); }catch(e){}
-  showFohPublic();
-}
-
-
+// Note: sign-out is handled by fohSignOut() (wired to the UI). The former
+// orphaned signOut() helper was removed in the June 2026 cleanup.
 
 // ── Date / time helpers (ported from Kitchen App) ──
 function formatDate(d){
@@ -4312,47 +4315,9 @@ const FOH_STATUS_META = {
   cat:     { label: 'CAT', bg: 'cat' },
 };
 
-const FOH_ROSTER = [
-  // Management
-  { emp_id:'100065', name:'Manuel Petrosino',    role:'Beverage Manager',           section:'Management',    schedule:{ Mon:'IN', Tue:'IN', Wed:'IN', Thu:'IN', Fri:'IN', Sat:'IN', Sun:'OFF' } },
-  { emp_id:'000515', name:'Jins Thomas',         role:'Asst. Restaurant Manager',   section:'Management',    schedule:{ Mon:'OFF', Tue:'5pm–3am', Wed:'5pm–3am', Thu:'5pm–3am', Fri:'5pm–3am', Sat:'5pm–3am', Sun:'OFF' } },
-  { emp_id:'100126', name:'Katarina Vukotic',    role:'Customer Experience Mgr',    section:'Management',    schedule:{ Mon:'OFF', Tue:'3pm–1am', Wed:'3pm–1am', Thu:'3pm–1am', Fri:'3pm–1am', Sat:'3pm–1am', Sun:'OFF' } },
-  // Restaurant
-  { emp_id:'100119', name:'Alessandro Viscardi', role:'Restaurant Supervisor',      section:'Restaurant',    schedule:{ Mon:'2pm–12am', Tue:'2pm–12am', Wed:'2pm–12am', Thu:'2pm–12am', Fri:'2pm–12am', Sat:'2pm–12am', Sun:'OFF' } },
-  { emp_id:'000860', name:'Rida Maazouz',        role:'Restaurant Supervisor',      section:'Restaurant',    schedule:{ Mon:'5pm–3am', Tue:'OFF', Wed:'4pm–2am', Thu:'4pm–2am', Fri:'4pm–2am', Sat:'4pm–2am', Sun:'OFF' } },
-  // Head Waiter
-  { emp_id:'000827', name:'Kamal Gurung',        role:'Head Waiter',                section:'Head Waiter',   schedule:{ Mon:'2pm–12am', Tue:'3pm–1am', Wed:'3pm–1am', Thu:'3pm–1am', Fri:'3pm–1am', Sat:'3pm–1am', Sun:'OFF' } },
-  { emp_id:'100022', name:'Mohammed Ait Nacer',  role:'Head Waiter',                section:'Head Waiter',   schedule:{ Mon:'4pm–2am', Tue:'4pm–2am', Wed:'4pm–2am', Thu:'4pm–2am', Fri:'4pm–2am', Sat:'4pm–2am', Sun:'OFF' } },
-  { emp_id:'100135', name:'Iliaz Ismailov',      role:'Head Waiter',                section:'Head Waiter',   schedule:{ Mon:'OFF', Tue:'4pm–2am', Wed:'4pm–2am', Thu:'4pm–2am', Fri:'4pm–2am', Sat:'4pm–2am', Sun:'OFF' } },
-  // Waiter/Waitress
-  { emp_id:'100150', name:'Pasquale Compierchio',role:'Waiter',                     section:'Waiter/Waitress', schedule:{ Mon:'OFF', Tue:'3pm–1am', Wed:'3pm–1am', Thu:'3pm–1am', Fri:'3pm–1am', Sat:'3pm–1am', Sun:'OFF' } },
-  { emp_id:'100178', name:'Than Htike Yadanar',  role:'Waitress',                   section:'Waiter/Waitress', schedule:{ Mon:'2pm–12am', Tue:'4pm–2am', Wed:'4pm–2am', Thu:'4pm–2am', Fri:'4pm–2am', Sat:'4pm–2am', Sun:'OFF' } },
-  { emp_id:'100021', name:'Thein Gi Win',        role:'Waitress',                   section:'Waiter/Waitress', schedule:{ Mon:'4pm–2am', Tue:'OFF', Wed:'4pm–2am', Thu:'4pm–2am', Fri:'4pm–2am', Sat:'4pm–2am', Sun:'OFF' } },
-  // Runners
-  { emp_id:'000565', name:'Purshottan Neupane',  role:'Head Runner',                section:'Runners',       schedule:{ Mon:'OFF', Tue:'3pm–1am', Wed:'3pm–1am', Thu:'3pm–1am', Fri:'3pm–1am', Sat:'3pm–1am', Sun:'OFF' } },
-  { emp_id:'100171', name:'Santhosh Muthuswamy', role:'Runner',                     section:'Runners',       schedule:{ Mon:'3pm–1am', Tue:'OFF', Wed:'4pm–2am', Thu:'4pm–2am', Fri:'4pm–2am', Sat:'4pm–2am', Sun:'OFF' } },
-  { emp_id:'100182', name:'Tulsiram Neupane',    role:'Runner',                     section:'Runners',       schedule:{ Mon:'4pm–2am', Tue:'4pm–2am', Wed:'4pm–2am', Thu:'4pm–2am', Fri:'4pm–2am', Sat:'4pm–2am', Sun:'OFF' } },
-  // Bar
-  { emp_id:'100161', name:'Jad',                 role:'Asst. Bar Manager',          section:'Bar',           schedule:{ Mon:'OFF', Tue:'2pm–1am', Wed:'2pm–1am', Thu:'2pm–1am', Fri:'2pm–1am', Sat:'2pm–1am', Sun:'OFF' } },
-  { emp_id:null,     name:'J.K.',                role:'Bartender',                  section:'Bar',           schedule:{ Mon:'4pm–close', Tue:'5pm–3am', Wed:'5pm–3am', Thu:'5pm–3am', Fri:'5pm–3am', Sat:'5pm–3am', Sun:'OFF' } },
-  { emp_id:'000851', name:'Robert Kisambu',      role:'Barista',                    section:'Bar',           schedule:{ Mon:'2pm–1am', Tue:'5pm–3am', Wed:'5pm–3am', Thu:'5pm–3am', Fri:'5pm–3am', Sat:'5pm–3am', Sun:'OFF' } },
-  { emp_id:'000815', name:'Roberto Ramos',       role:'Barista',                    section:'Bar',           schedule:{ Mon:'3pm–1am', Tue:'OFF', Wed:'2pm–1am', Thu:'2pm–1am', Fri:'2pm–1am', Sat:'2pm–1am', Sun:'OFF' } },
-  { emp_id:'100167', name:'Ricky',               role:'Barback',                    section:'Bar',           schedule:{ Mon:'4pm–close', Tue:'5pm–3am', Wed:'4pm–close', Thu:'4pm–close', Fri:'4pm–close', Sat:'4pm–close', Sun:'OFF' } },
-  { emp_id:'100190', name:'Abishek',             role:'Asst. Head Sommelier',       section:'Bar',           schedule:{ Mon:'4pm–2am', Tue:'3pm–1am', Wed:'3pm–1am', Thu:'3pm–1am', Fri:'3pm–1am', Sat:'3pm–1am', Sun:'OFF' } },
-  { emp_id:'100153', name:'Antonio',             role:'Senior Sommelier',           section:'Bar',           schedule:{ Mon:'OFF', Tue:'5pm–3am', Wed:'5pm–3am', Thu:'5pm–3am', Fri:'5pm–3am', Sat:'5pm–3am', Sun:'OFF' } },
-  // Hostess
-  { emp_id:'100133', name:'Syrgayim Ermekbaeva', role:'Hostess',                    section:'Hostess Desk',  schedule:{ Mon:'5pm–2am', Tue:'OFF', Wed:'5pm–2am', Thu:'2pm–11pm', Fri:'2pm–11pm', Sat:'2pm–11pm', Sun:'OFF' } },
-  { emp_id:'100152', name:'Nour Al Haj Hassan',  role:'Hostess',                    section:'Hostess Desk',  schedule:{ Mon:'2pm–11pm', Tue:'2pm–11pm', Wed:'2pm–11pm', Thu:'5pm–2am', Fri:'5pm–2am', Sat:'5pm–2am', Sun:'OFF' } },
-  // Security
-  { emp_id:'100056', name:'Nir Bahadur Magar',   role:'Security',                   section:'Security',      schedule:{ Mon:'5pm–3am', Tue:'5pm–3am', Wed:'5pm–3am', Thu:'5pm–3am', Fri:'5pm–3am', Sat:'5pm–3am', Sun:'OFF' } },
-  // Housekeeping
-  { emp_id:'000046', name:'Mohammad Hanif',      role:'Housekeeping',               section:'Housekeeping',  schedule:{ Mon:'9am–7pm', Tue:'9am–7pm', Wed:'9am–7pm', Thu:'9am–7pm', Fri:'9am–7pm', Sat:'9am–7pm', Sun:'OFF' } },
-  { emp_id:'100179', name:'Bishnu Shrestha',     role:'Housekeeping',               section:'Housekeeping',  schedule:{ Mon:'OFF', Tue:'5pm–3am', Wed:'5pm–3am', Thu:'5pm–3am', Fri:'5pm–3am', Sat:'5pm–3am', Sun:'OFF' } },
-  { emp_id:'100169', name:'Mary Njeri',          role:'Housekeeping',               section:'Housekeeping',  schedule:{ Mon:'5pm–3am', Tue:'3pm–1am', Wed:'3pm–1am', Thu:'3pm–1am', Fri:'LEAVE', Sat:'LEAVE', Sun:'OFF' } },
-  // Cashiers
-  { emp_id:'100121', name:'Cho Zin',             role:'Cashier',                    section:'Cashiers',      schedule:{ Mon:'OFF', Tue:'3pm–1am', Wed:'3pm–1am', Thu:'3pm–1am', Fri:'3pm–1am', Sat:'3pm–1am', Sun:'OFF' } },
-  { emp_id:'000632', name:'Roshan',              role:'Cashier',                    section:'Cashiers',      schedule:{ Mon:'5pm–3am', Tue:'5pm–3am', Wed:'5pm–3am', Thu:'5pm–3am', Fri:'5pm–3am', Sat:'5pm–3am', Sun:'OFF' } },
-];
+// Note: the former hardcoded FOH_ROSTER (and the renderFohSchedule day-chip
+// view that used it) were removed in the June 2026 cleanup. The live schedule
+// is the Supabase-backed module (openFohSchedule → foh_staff / foh_roster).
 
 const FOH_EVENTS = {
   Mon: 'Listening Bar',
@@ -4366,8 +4331,6 @@ const FOH_EVENTS = {
 
 const DAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-
-let fohCurrentDay = null;
 
 function fohTodayShort(){
   return DAYS_SHORT[new Date().getDay()];
@@ -4416,111 +4379,10 @@ async function renderFohHome(){
 }
 
 
-// ── SCHEDULE TAB ──
-async function renderFohSchedule(){
-  const el = document.getElementById('foh-tab-content');
-  const todayShort = fohTodayShort();
-  if(!fohCurrentDay) fohCurrentDay = todayShort;
-
-  // Day chips
-  const chips = DAYS_SHORT.map(d => {
-    const isToday  = d === todayShort;
-    const isActive = d === fohCurrentDay;
-    return `<div class="foh-day-chip ${isActive?'active':''} ${isToday&&!isActive?'today':''}"
-      onclick="fohSelectDay('${d}')">${fohDateLabel(d).slice(0,3)}</div>`;
-  }).join('');
-
-  // Event banner
-  const eventName = FOH_EVENTS[fohCurrentDay] || '';
-  const banner = eventName
-    ? `<div class="foh-event-banner">&#127775; ${eventName}</div>`
-    : '';
-
-  // Show skeleton immediately
-  el.innerHTML = `
-    <div class="foh-schedule-header">${chips}</div>
-    ${banner}
-    <div style="text-align:center;padding:32px 0;color:var(--text-light);font-size:13px;font-style:italic;">Loading attendance…</div>
-  `;
-
-  // Fetch today's attendance from Kitchen App Supabase (only for today)
-  let attMap = {};
-  if(fohCurrentDay === todayShort){
-    try {
-      const todayISO_ = localISO(new Date());
-      const empIds = FOH_ROSTER.filter(s=>s.emp_id).map(s=>s.emp_id);
-      const { data: attData } = await sbKitchen.from('attendance')
-        .select('emp_id, first_in, last_out, manual_out')
-        .eq('att_date', todayISO_)
-        .in('emp_id', empIds);
-      for(const row of (attData||[])){
-        attMap[row.emp_id] = row;
-      }
-    } catch(e){ /* silent — attendance is best-effort */ }
-  }
-
-  // Group staff by section
-  const sections = {};
-  for(const s of FOH_ROSTER){
-    const shift = s.schedule[fohCurrentDay] || 'OFF';
-    if(!sections[s.section]) sections[s.section] = [];
-    sections[s.section].push({ ...s, shift });
-  }
-
-  const isToday = fohCurrentDay === todayShort;
-
-  let sectionsHtml = '';
-  for(const [sec, staff] of Object.entries(sections)){
-    const rows = staff.map(s => {
-      const isOff   = s.shift === 'OFF';
-      const isLeave = s.shift === 'LEAVE';
-      const dotColor = isOff ? '#ddd' : isLeave ? '#d4870a' : '#2d7a4f';
-      const badgeClass = isOff ? 'foh-shift-off' : isLeave ? 'foh-shift-leave' : 'foh-shift-on';
-
-      // Attendance (today only)
-      let attHtml = '';
-      if(isToday && s.emp_id && !isOff && !isLeave){
-        const att = attMap[s.emp_id];
-        if(att){
-          const clockIn  = att.first_in  ? att.first_in.slice(11,16)  : null;
-          const clockOut = (att.last_out || att.manual_out) ? (att.last_out || att.manual_out).slice(11,16) : null;
-          const inHtml  = clockIn  ? `<span class="foh-att-in">IN ${clockIn}</span>`   : `<span class="foh-att-absent">Not in yet</span>`;
-          const outHtml = clockOut ? `<span class="foh-att-out">OUT ${clockOut}</span>` : '';
-          attHtml = `<div class="foh-att-row">${inHtml}${outHtml}</div>`;
-        } else {
-          attHtml = `<div class="foh-att-row"><span class="foh-att-absent">Not clocked in</span></div>`;
-        }
-      }
-
-      return `
-        <div class="foh-staff-row">
-          <div class="foh-staff-dot" style="background:${dotColor}"></div>
-          <div style="flex:1">
-            <div class="foh-staff-name">${s.name}</div>
-            <div class="foh-staff-role">${s.role}</div>
-            ${attHtml}
-          </div>
-          <div class="foh-shift-badge ${badgeClass}">${s.shift}</div>
-        </div>`;
-    }).join('');
-    sectionsHtml += `
-      <div class="foh-section-card">
-        <div class="foh-section-head">${sec}</div>
-        ${rows}
-      </div>`;
-  }
-
-  el.innerHTML = `
-    <div class="foh-schedule-header">${chips}</div>
-    ${banner}
-    ${sectionsHtml}
-  `;
-}
-
-function fohSelectDay(day){
-  fohCurrentDay = day;
-  renderFohSchedule();
-}
+// Note: the legacy day-chip schedule view (renderFohSchedule / fohSelectDay,
+// backed by the hardcoded FOH_ROSTER) was removed in the June 2026 cleanup —
+// it was unreachable. The nav and module box open the Supabase-backed module
+// below via openFohSchedule().
 
 
 // ══════════════════════════════════════════════
@@ -4631,6 +4493,15 @@ async function fohLoadAttendance(){
   });
 }
 
+// Extract HH:MM from an attendance time value. The Kitchen `attendance` table
+// stores first_in/last_out/manual_out as plain "HH:MM" strings (e.g. "16:02"),
+// NOT full ISO timestamps — so the old .slice(11,16) returned "" and the
+// clock-in/out time never showed. This handles both "HH:MM[:SS]" and ISO.
+function attHHMM(t){
+  if(!t) return '';
+  var m = String(t).match(/(\d{2}):(\d{2})/);
+  return m ? m[1] + ':' + m[2] : String(t).slice(0,5);
+}
 function fohSchedAttState(staff, dateStr){
   if(!staff.emp_id) return { kind:'none' };
   var rrow = fohSchedRoster[fohSchedRosterKey(staff.id, dateStr)];
@@ -4640,10 +4511,10 @@ function fohSchedAttState(staff, dateStr){
   var isPast  = dateStr < fohSchedTodayStr();
   if(a && a.first_in){
     var effOut = a.last_out || a.manual_out || null;
-    if(effOut) return { kind:'done', in:a.first_in.slice(11,16), out:effOut.slice(11,16), manual:!a.last_out&&!!a.manual_out, hours:calcHours(a.first_in.slice(11,16), effOut.slice(11,16)) };
-    if(isToday) return { kind:'in', in:a.first_in.slice(11,16) };
+    if(effOut) return { kind:'done', in:attHHMM(a.first_in), out:attHHMM(effOut), manual:!a.last_out&&!!a.manual_out, hours:calcHours(attHHMM(a.first_in), attHHMM(effOut)) };
+    if(isToday) return { kind:'in', in:attHHMM(a.first_in) };
     var pe = rrow ? formatTime(rrow.shift_end) : '';
-    return { kind:'open', in:a.first_in.slice(11,16), plannedEnd:pe };
+    return { kind:'open', in:attHHMM(a.first_in), plannedEnd:pe };
   }
   if(scheduled && (isPast||isToday) && dateStr >= FOH_ATT_START){
     if(isPast) return { kind:'absent' };
@@ -4981,7 +4852,7 @@ function fohSchedCloseShift(event, staffId, dateStr){
   var plannedEnd=rrow?formatTime(rrow.shift_end):'';
   var a=fohSchedAttendance[fohSchedAttKey(staff.emp_id,dateStr)];
   if(!a||!a.first_in) return;
-  var out=prompt('Close shift for '+staff.name+' on '+dateStr+'\nClocked in at '+a.first_in.slice(11,16)+'. Clock-out time:', plannedEnd||'00:00');
+  var out=prompt('Close shift for '+staff.name+' on '+dateStr+'\nClocked in at '+attHHMM(a.first_in)+'. Clock-out time:', plannedEnd||'00:00');
   if(out===null) return;
   out=out.trim();
   if(!/^\d{1,2}:\d{2}$/.test(out)){ alert('Please use HH:MM'); return; }
@@ -5237,10 +5108,10 @@ async function openFohSchedule(){
         <button onclick="closeFohSchedule()" style="background:transparent;border:none;color:var(--vino);font-size:11px;cursor:pointer;font-family:var(--font-sans);letter-spacing:1px;text-transform:uppercase">&#8592; Back to FOH</button>
       </div>
     `;
-    // Set date
+    document.body.appendChild(sched);
+    // Set date (after append so the element is in the document)
     var dateEl = document.getElementById('foh-sched-date');
     if(dateEl) dateEl.textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    document.body.appendChild(sched);
   } else {
     sched.style.display = 'flex';
   }
@@ -5516,9 +5387,13 @@ function fohSignOut(){
       <select id="foh-sch-status-sel" onchange="fohSchedStatusChange()" style="width:100%;margin-top:4px;padding:8px;border:1px solid var(--sabbia-dark);border-radius:4px;font-family:var(--font-sans);background:var(--sabbia-light);color:var(--ink);font-size:14px">
         <option value="working">Working</option>
         <option value="off">Day Off</option>
-        <option value="leave">Leave</option>
-        <option value="sick">Sick</option>
-        <option value="holiday">Public Holiday</option>
+        <option value="wo">Week Off (WO)</option>
+        <option value="sl">Sick Leave (SL)</option>
+        <option value="al">Annual Leave (AL)</option>
+        <option value="ph">Public Holiday (PH)</option>
+        <option value="em">Emergency (EM)</option>
+        <option value="tr">Training (TR)</option>
+        <option value="cat">Catering (CAT)</option>
       </select>
     </div>
     <div id="foh-sch-time-fields">
@@ -5601,7 +5476,7 @@ function fohSignOut(){
     </label>
     <div style="display:flex;gap:10px">
       <button onclick="fohSchedCancelDup()" style="flex:1;padding:10px;background:transparent;border:1px solid var(--sabbia-dark);border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--ink)">Cancel</button>
-      <button onclick="fohSchedConfirmDup()" style="flex:1;padding:10px;background:var(--vino);border:none;border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--cream);font-weight:700">Duplicate</button>
+      <button onclick="fohSchedConfirmDuplicate()" style="flex:1;padding:10px;background:var(--vino);border:none;border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--cream);font-weight:700">Duplicate</button>
     </div>
   </div>
 </div>
