@@ -14,4 +14,7 @@ alter table rev_daily add column if not exists lounge_lunch_covers integer;
 alter table rev_daily add column if not exists lounge_dinner_net   numeric;
 alter table rev_daily add column if not exists lounge_dinner_covers integer;
 
+-- editable per-day budget (overrides the rates-derived default when set)
+alter table rev_daily add column if not exists budget_override numeric;
+
 notify pgrst, 'reload schema';

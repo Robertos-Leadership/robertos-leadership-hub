@@ -4266,7 +4266,8 @@ function revPeriodOf(d){ return String(d).slice(0,7); }
 function revLatestPeriod(){ var R=revInit(); var ps=R.daily.map(function(d){return revPeriodOf(d.service_date);}); if(ps.length) return ps.sort().slice(-1)[0]; var n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'); }
 function revWeekday(ds){ return new Date(ds+'T12:00:00').toLocaleDateString('en-US',{weekday:'long'}); }
 function revDailyMap(){ var m={}; revInit().daily.forEach(function(d){ m[String(d.service_date).slice(0,10)]=d; }); return m; }
-function revBudget(ds){ var r=revInit().rates[revWeekday(ds)]; if(!r) return 0; return (Number(r.cover_target)||0)*(Number(r.avg_spend)||0); }
+function revRatesBudget(ds){ var r=revInit().rates[revWeekday(ds)]; if(!r) return 0; return (Number(r.cover_target)||0)*(Number(r.avg_spend)||0); }
+function revBudget(ds){ var row=revDailyMap()[ds]; if(row&&row.budget_override!=null) return Number(row.budget_override); return revRatesBudget(ds); }
 function revDaysInMonth(p){ var a=p.split('-').map(Number); return new Date(a[0],a[1],0).getDate(); }
 function revAddMonths(p,n){ var a=p.split('-').map(Number); var d=new Date(a[0],a[1]-1,1); d.setMonth(d.getMonth()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function revPrevPeriod(p){ return revAddMonths(p,-1); }
@@ -4287,11 +4288,11 @@ function revMonthData(p){
     var rc=(row&&row.rest_covers_actual!=null)?Number(row.rest_covers_actual):null;
     var lc=(row&&row.lounge_covers_actual!=null)?Number(row.lounge_covers_actual):null;
     var tot=(rc!=null||lc!=null)?((rc||0)+(lc||0)):null;
-    if(!closed) budgetTotal+=budget;
+    budgetTotal+=budget;   // budget is 0 for closed Sundays unless an override is set
     if(net!=null){ mtdNet+=net; tradingDays++; windowDay=d; if(tot!=null) coversAct+=tot; }
     days.push({d:d,date:ds,weekday:wd,closed:closed,budget:budget,net:net,restCov:rc,lounCov:lc,totalCov:tot,vsBudget:net!=null?net-budget:null,avgCover:(net!=null&&tot)?net/tot:null});
   }
-  var budgetToDate=0; days.forEach(function(x){ if(!x.closed && x.d<=windowDay) budgetToDate+=x.budget; });
+  var budgetToDate=0; days.forEach(function(x){ if(x.d<=windowDay) budgetToDate+=x.budget; });
   return {period:p,days:days,mtdNet:mtdNet,budgetTotal:budgetTotal,budgetToDate:budgetToDate,coversAct:coversAct,tradingDays:tradingDays,windowDay:windowDay};
 }
 function revAreaMTD(p){
@@ -4358,7 +4359,9 @@ function revEditDay(ds){
   var map=revDailyMap(); var row=map[ds]||{};
   document.getElementById('rev-edit-date').value=ds;
   document.getElementById('rev-edit-title').textContent=new Date(ds+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('rev-edit-budget').textContent=revMoney(revBudget(ds));
+  var defB=revRatesBudget(ds);
+  document.getElementById('rev-edit-budget').value=(row.budget_override!=null?row.budget_override:(defB||''));
+  var defEl=document.getElementById('rev-edit-budget-def'); if(defEl) defEl.textContent='default '+revMoney(defB)+(defB===0?' (closed)':'');
   function setv(id,v){ document.getElementById(id).value=(v!=null?v:''); }
   var hasDaypart=(row.rest_lunch_net!=null||row.rest_dinner_net!=null||row.lounge_lunch_net!=null||row.lounge_dinner_net!=null||row.rest_dinner_covers!=null||row.lounge_dinner_covers!=null);
   if(hasDaypart){
@@ -4397,7 +4400,9 @@ async function revSaveDay(){
   function sum(a,b){ return (a==null&&b==null)?null:((a||0)+(b||0)); }
   var restNet=sum(rl,rd), restCov=sum(rlc,rdc), lounNet=sum(ll,ld), lounCov=sum(llc,ldc);
   var net=(restNet==null&&lounNet==null)?null:((restNet||0)+(lounNet||0));
-  var payload={ service_date:ds,
+  var bIn=revNum('rev-edit-budget'), defB=revRatesBudget(ds);
+  var budgetOverride=(bIn==null||bIn===defB)?null:bIn;   // store only if changed from the rates default
+  var payload={ service_date:ds, budget_override:budgetOverride,
     rest_lunch_net:rl, rest_lunch_covers:rlc, rest_dinner_net:rd, rest_dinner_covers:rdc,
     lounge_lunch_net:ll, lounge_lunch_covers:llc, lounge_dinner_net:ld, lounge_dinner_covers:ldc,
     rest_net:restNet, rest_covers_actual:restCov, lounge_net:lounNet, lounge_covers_actual:lounCov,
@@ -4487,10 +4492,11 @@ function revRenderMonth(){
   h.push('<div class="rev-grid-wrap rev-grid-scroll"><table class="rev-grid"><thead><tr><th>Day</th><th>Net (actual)</th><th>Budget</th><th>vs Budget</th><th>Covers</th><th>Avg/cover</th></tr></thead><tbody>');
   m.days.forEach(function(d){
     var sun=d.closed; // Sunday — normally closed, but enterable if opened (e.g. private event)
-    var vsCls=(!sun && d.vsBudget!=null)?(d.vsBudget>=0?'rev-pos':'rev-neg'):'';
+    var noBudget=(sun && d.budget===0);
+    var vsCls=(!noBudget && d.vsBudget!=null)?(d.vsBudget>=0?'rev-pos':'rev-neg'):'';
     var netCell=d.net!=null?revMoney(d.net):'<span class="rev-add">+ enter'+(sun?' (Sun)':'')+'</span>';
-    var budgetCell=sun?'<span class="rev-mut">—</span>':revMoney(d.budget);
-    var vsCell=(sun||d.vsBudget==null)?'—':((d.vsBudget>=0?'+':'')+revMoney(d.vsBudget).replace('AED ',''));
+    var budgetCell=noBudget?'<span class="rev-mut">—</span>':revMoney(d.budget);
+    var vsCell=(noBudget||d.vsBudget==null)?'—':((d.vsBudget>=0?'+':'')+revMoney(d.vsBudget).replace('AED ',''));
     h.push('<tr onclick="revEditDay(\''+d.date+'\')"'+(sun?' class="rev-sun"':'')+'>'
       +'<td class="rev-day">'+d.weekday.slice(0,3)+' '+d.d+'</td>'
       +'<td>'+netCell+'</td>'
@@ -5818,7 +5824,11 @@ function fohSignOut(){
 <div id="rev-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center" onclick="revCloseEdit(event)">
   <div style="background:var(--cream);border-radius:8px;padding:22px;width:560px;max-width:96vw;box-shadow:0 8px 32px rgba(0,0,0,.25)">
     <div id="rev-edit-title" style="font-family:var(--font-serif);font-size:16px;color:var(--vino);font-weight:700;margin-bottom:4px"></div>
-    <div style="font-size:12px;color:var(--text-light);margin-bottom:14px">Daily budget: <span id="rev-edit-budget"></span> · enter revenue &amp; covers per area / daypart</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <label class="rev-lbl" style="margin:0">Daily budget (AED)</label>
+      <input id="rev-edit-budget" type="number" inputmode="decimal" class="rev-inp" style="width:130px">
+      <span id="rev-edit-budget-def" style="font-size:11px;color:var(--text-light)"></span>
+    </div>
     <input type="hidden" id="rev-edit-date">
     <div class="rev-eg-scroll"><table class="rev-edit-grid">
       <thead><tr><th></th><th colspan="3">Lunch</th><th colspan="3">Dinner</th></tr>

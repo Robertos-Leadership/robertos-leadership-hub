@@ -26,6 +26,7 @@ create table if not exists rev_daily (
   rest_dinner_net      numeric, rest_dinner_covers  integer,
   lounge_lunch_net     numeric, lounge_lunch_covers integer,
   lounge_dinner_net    numeric, lounge_dinner_covers integer,
+  budget_override      numeric,            -- editable per-day budget (else rates default)
   forecast             numeric,
   notes                text,
   created_at           timestamptz default now(),
