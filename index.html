@@ -1523,48 +1523,91 @@
   .foh-nav-btn:hover .foh-nav-label { color: var(--vino); }
 
   /* ── FOH HOME ── */
-  .foh-covers-card {
-    background: var(--vino);
-    border-radius: 4px;
-    padding: 22px 22px 20px;
-    margin-bottom: 16px;
-    position: relative;
-    overflow: hidden;
+  /* ── FOH HOME SCREEN ── */
+  .foh-home-wrap { display:flex; flex-direction:column; gap:14px; padding-bottom:12px; }
+
+  .foh-tonight-card {
+    background:var(--vino); border-radius:6px; padding:28px 24px 24px;
+    position:relative; overflow:hidden;
   }
-  .foh-covers-card::before {
-    content:'';
-    position: absolute; top:0; left:0; right:0; height:3px;
-    background: linear-gradient(90deg, var(--gold), var(--gold-light), transparent);
+  .foh-tonight-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    background:linear-gradient(90deg, var(--gold), rgba(186,155,2,0.3), transparent);
   }
-  .foh-covers-label {
-    font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase;
-    color: rgba(255,255,255,0.55); margin-bottom: 14px;
+  .foh-tonight-card::after {
+    content:''; position:absolute; bottom:-40px; right:-40px;
+    width:160px; height:160px; border-radius:50%;
+    background:rgba(255,255,255,0.03);
   }
-  .foh-covers-row { display: flex; gap: 0; }
-  .foh-covers-col {
-    flex: 1; text-align: center;
-    border-right: 1px solid rgba(255,255,255,0.12);
-    padding: 0 12px;
+  .foh-tonight-label {
+    font-size:9px; letter-spacing:0.35em; text-transform:uppercase;
+    color:rgba(255,255,255,0.45); margin-bottom:18px;
   }
-  .foh-covers-col:first-child { padding-left: 0; }
-  .foh-covers-col:last-child { border-right: none; }
-  .foh-covers-num {
-    font-family: 'Playfair Display', serif;
-    font-size: 42px; color: #fff; line-height: 1;
+  .foh-tonight-count {
+    font-family:'Playfair Display',serif;
+    font-size:72px; line-height:1; color:#fff; letter-spacing:-2px;
   }
-  .foh-covers-day {
-    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
-    color: rgba(255,255,255,0.6); margin-top: 6px;
+  .foh-tonight-unit {
+    font-size:13px; letter-spacing:0.15em; text-transform:uppercase;
+    color:rgba(255,255,255,0.5); margin-top:6px;
   }
-  .foh-covers-event {
-    font-size: 10px; color: var(--gold-light);
-    margin-top: 4px; font-style: italic;
+  .foh-tonight-event {
+    display:inline-block; margin-top:18px;
+    background:rgba(186,155,2,0.18); border:1px solid rgba(186,155,2,0.35);
+    border-radius:3px; padding:4px 12px;
+    font-size:10px; letter-spacing:0.2em; text-transform:uppercase;
+    color:var(--gold-light);
   }
-  .foh-covers-loading {
-    font-size: 13px; color: rgba(255,255,255,0.5);
-    text-align: center; padding: 16px 0;
-    font-style: italic;
+  .foh-tonight-day {
+    position:absolute; top:28px; right:24px;
+    font-size:11px; letter-spacing:0.12em; text-transform:uppercase;
+    color:rgba(255,255,255,0.35);
   }
+  .foh-tonight-sync { margin-top:14px; font-size:10px; color:rgba(255,255,255,0.3); font-style:italic; }
+
+  .foh-tomorrow-card {
+    background:#fff; border:1px solid rgba(64,2,7,0.1);
+    border-radius:6px; padding:18px 20px;
+    display:flex; align-items:center; justify-content:space-between;
+    position:relative; overflow:hidden;
+  }
+  .foh-tomorrow-card::before {
+    content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background:var(--gold);
+  }
+  .foh-tomorrow-left { padding-left:8px; }
+  .foh-tomorrow-label {
+    font-size:9px; letter-spacing:0.3em; text-transform:uppercase;
+    color:rgba(64,2,7,0.4); margin-bottom:6px;
+  }
+  .foh-tomorrow-day {
+    font-size:12px; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--vino); font-weight:600;
+  }
+  .foh-tomorrow-event { font-size:11px; color:rgba(64,2,7,0.5); margin-top:3px; font-style:italic; }
+  .foh-tomorrow-count {
+    font-family:'Playfair Display',serif; font-size:44px; color:var(--vino); line-height:1;
+  }
+  .foh-tomorrow-unit {
+    font-size:9px; letter-spacing:0.2em; text-transform:uppercase;
+    color:rgba(64,2,7,0.35); text-align:right; margin-top:2px;
+  }
+
+  .foh-quick-tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .foh-quick-tile {
+    background:#fff; border:1px solid rgba(64,2,7,0.1);
+    border-radius:6px; padding:16px; cursor:pointer;
+    text-align:center; transition:background 0.15s;
+  }
+  .foh-quick-tile:active { background:rgba(64,2,7,0.05); }
+  .foh-quick-tile-icon { font-size:22px; margin-bottom:6px; }
+  .foh-quick-tile-label {
+    font-size:9px; letter-spacing:0.25em; text-transform:uppercase;
+    color:var(--vino); font-weight:600;
+  }
+  .foh-quick-tile-sub { font-size:10px; color:rgba(64,2,7,0.45); margin-top:3px; font-style:italic; }
+
+  .foh-covers-loading { font-size:13px; color:rgba(255,255,255,0.4); font-style:italic; }
 
   /* ── FOH SCHEDULE ── */
   .foh-schedule-header {
@@ -4164,58 +4207,90 @@ async function renderFohHome(){
   const today = fohTodayShort();
   const tomorrow = fohTomorrowShort();
 
-  // Date display
+  // Update date in header
   const now = new Date();
   document.getElementById('foh-date-display').textContent =
     now.toLocaleDateString('en-GB',{weekday:'short', day:'numeric', month:'short', year:'numeric'});
 
-  // Render skeleton first
+  // Skeleton
+  el.style.padding = '16px';
+  el.style.maxWidth = '600px';
   el.innerHTML = `
-    <div class="foh-covers-card">
-      <div class="foh-covers-label">Reservations</div>
-      <div class="foh-covers-row" id="foh-covers-row">
-        <div class="foh-covers-loading">Loading covers…</div>
+    <div class="foh-home-wrap">
+      <div class="foh-tonight-card">
+        <div class="foh-tonight-label">Tonight's Reservations</div>
+        <div class="foh-tonight-day" id="foh-tn-day">${fohDateLabel(today)}</div>
+        <div class="foh-tonight-count" id="foh-tn-count"><span style="font-size:28px;opacity:.4">—</span></div>
+        <div class="foh-tonight-unit">covers booked</div>
+        <div id="foh-tn-event"></div>
+        <div class="foh-tonight-sync" id="foh-tn-sync">Loading from SevenRooms…</div>
       </div>
-    </div>
-    <div style="margin-top:8px; font-size:11px; color:var(--text-light); letter-spacing:0.05em; text-align:center; padding-bottom:20px;">
-      Tap <strong>Schedule</strong> below to see today's team on duty.
+      <div class="foh-tomorrow-card">
+        <div class="foh-tomorrow-left">
+          <div class="foh-tomorrow-label">Tomorrow</div>
+          <div class="foh-tomorrow-day">${fohDateLabel(tomorrow)}</div>
+          <div class="foh-tomorrow-event" id="foh-tm-event"></div>
+        </div>
+        <div>
+          <div class="foh-tomorrow-count" id="foh-tm-count">—</div>
+          <div class="foh-tomorrow-unit">covers</div>
+        </div>
+      </div>
+      <div class="foh-quick-tiles">
+        <div class="foh-quick-tile" onclick="fohTab('schedule')">
+          <div class="foh-quick-tile-icon">📋</div>
+          <div class="foh-quick-tile-label">Schedule</div>
+          <div class="foh-quick-tile-sub">Today's team</div>
+        </div>
+        <div class="foh-quick-tile" onclick="fohTab('manager')">
+          <div class="foh-quick-tile-icon">🔐</div>
+          <div class="foh-quick-tile-label">Manager</div>
+          <div class="foh-quick-tile-sub">Events & reports</div>
+        </div>
+      </div>
     </div>
   `;
 
-  // Fetch covers for today + tomorrow (anon, public)
+  // Fetch live covers from Kitchen Supabase (SevenRooms data)
   try {
     const todayISO_ = localISO(new Date());
     const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate()+1);
     const tomorrowISO_ = localISO(tomorrowDate);
 
-    const { data: coversData } = await sbKitchen.from('covers')
-      .select('date, total_booked, total_arrived')
-      .in('date', [todayISO_, tomorrowISO_]);
+    const { data: coversData, error } = await sbKitchen.from('covers')
+      .select('service_date, booked, night_covers, here, upcoming')
+      .in('service_date', [todayISO_, tomorrowISO_]);
 
-    const todayRow    = (coversData||[]).find(r => String(r.date).slice(0,10) === todayISO_);
-    const tomorrowRow = (coversData||[]).find(r => String(r.date).slice(0,10) === tomorrowISO_);
+    if(error) throw error;
 
-    const todayCovers    = todayRow    ? (todayRow.total_booked    || 0) : '—';
-    const tomorrowCovers = tomorrowRow ? (tomorrowRow.total_booked || 0) : '—';
+    const todayRow    = (coversData||[]).find(r => String(r.service_date).slice(0,10) === todayISO_);
+    const tomorrowRow = (coversData||[]).find(r => String(r.service_date).slice(0,10) === tomorrowISO_);
+
+    // Tonight — prefer night_covers (SevenRooms confirmed), fallback to booked
+    const todayCovers = todayRow
+      ? (todayRow.night_covers ?? todayRow.booked ?? '—')
+      : '—';
+    const tomorrowCovers = tomorrowRow
+      ? (tomorrowRow.night_covers ?? tomorrowRow.booked ?? '—')
+      : '—';
 
     const todayEvent    = FOH_EVENTS[today]    || '';
     const tomorrowEvent = FOH_EVENTS[tomorrow] || '';
 
-    document.getElementById('foh-covers-row').innerHTML = `
-      <div class="foh-covers-col">
-        <div class="foh-covers-num">${todayCovers}</div>
-        <div class="foh-covers-day">Tonight · ${fohDateLabel(today)}</div>
-        ${todayEvent ? `<div class="foh-covers-event">${todayEvent}</div>` : ''}
-      </div>
-      <div class="foh-covers-col">
-        <div class="foh-covers-num">${tomorrowCovers}</div>
-        <div class="foh-covers-day">Tomorrow · ${fohDateLabel(tomorrow)}</div>
-        ${tomorrowEvent ? `<div class="foh-covers-event">${tomorrowEvent}</div>` : ''}
-      </div>
-    `;
+    document.getElementById('foh-tn-count').textContent = todayCovers;
+    document.getElementById('foh-tn-sync').textContent = 'Live · SevenRooms · updated now';
+    if(todayEvent){
+      document.getElementById('foh-tn-event').innerHTML =
+        `<div class="foh-tonight-event">${todayEvent}</div>`;
+    }
+    document.getElementById('foh-tm-count').textContent = tomorrowCovers;
+    if(tomorrowEvent){
+      document.getElementById('foh-tm-event').textContent = tomorrowEvent;
+    }
+
   } catch(e) {
-    document.getElementById('foh-covers-row').innerHTML =
-      '<div class="foh-covers-loading">Could not load covers</div>';
+    const sync = document.getElementById('foh-tn-sync');
+    if(sync) sync.textContent = 'Could not load — check connection';
   }
 }
 
