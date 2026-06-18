@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#6B1F2A">
-<title>Roberto's Front of House</title><!-- v=20250618f -->
+<title>Roberto's Front of House</title><!-- v=20250618g -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap');
@@ -5434,7 +5434,7 @@ function fohTab(tab){
 
   // Reset tab content constraints
   var tc = document.getElementById('foh-tab-content');
-  if(tc){ tc.style.padding='20px 16px 0'; tc.style.maxWidth='600px'; }
+  if(tc){ tc.style.padding=''; tc.style.maxWidth=''; }
 
   if(tab === 'home'){
     renderFohHome();
