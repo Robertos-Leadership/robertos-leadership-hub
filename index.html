@@ -413,7 +413,7 @@
   /* -- FOH HERO HEADER -- */
   .foh-hero {
     position: relative;
-    height: 30%;
+    height: 52%;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -1721,8 +1721,8 @@
   .fm-desc { font-size:11px; color:var(--text-light); line-height:1.35; margin-top:2px; }
   .fm-arrow { color:var(--vino); opacity:0.35; }
   /* A: 3-col */
-  .foh-mods-a { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:0 12px 12px; flex:1; }
-  .foh-mod-a { background:#fff; border:1px solid rgba(107,31,42,0.1); border-top:2px solid var(--vino); padding:0 10px; cursor:pointer; display:flex; flex-direction:column; justify-content:center; }
+  .foh-mods-a { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:8px 12px 10px; }
+  .foh-mod-a { background:#fff; border:1px solid rgba(107,31,42,0.1); border-top:2px solid var(--vino); padding:14px 12px 12px; cursor:pointer; display:flex; flex-direction:column; }
   .foh-mod-a.dim { opacity:0.33; pointer-events:none; border-top-color:#ddd; }
   .foh-mod-a .fm-name { font-size:13px; }
   .foh-mod-a .fm-arrow { font-size:13px; margin-top:6px; }
@@ -4366,22 +4366,22 @@ async function renderFohHome(){
         </div>
       </div>
 
-      <div style="flex:1;display:flex;flex-direction:column;padding:10px 12px 12px;gap:8px;background:var(--bg);">
-        <div class="foh-mod-a" onclick="fohTab('schedule')" style="flex:1">
+      <div class="foh-mods-a">
+        <div class="foh-mod-a" onclick="fohTab('schedule')">
           <div class="fm-tag">Live</div>
-          <div class="fm-name" style="font-size:16px">Schedule</div>
+          <div class="fm-name">Schedule</div>
           <div class="fm-desc">Today's team, shifts &amp; attendance</div>
-          <div class="fm-arrow" style="font-size:14px;margin-top:6px">›</div>
+          <div class="fm-arrow">›</div>
         </div>
-        <div class="foh-mod-a" onclick="fohTab('manager')" style="flex:1">
+        <div class="foh-mod-a" onclick="fohTab('manager')">
           <div class="fm-tag">Live</div>
-          <div class="fm-name" style="font-size:16px">Events &amp; Reports</div>
+          <div class="fm-name">Events &amp; Reports</div>
           <div class="fm-desc">Listening Bar, Jazz Night, planning</div>
-          <div class="fm-arrow" style="font-size:14px;margin-top:6px">›</div>
+          <div class="fm-arrow">›</div>
         </div>
-        <div class="foh-mod-a dim" style="flex:1">
+        <div class="foh-mod-a dim">
           <div class="fm-tag soon">Coming soon</div>
-          <div class="fm-name" style="font-size:16px">Operations</div>
+          <div class="fm-name">Operations</div>
           <div class="fm-desc">Briefings &amp; standards</div>
         </div>
       </div>
