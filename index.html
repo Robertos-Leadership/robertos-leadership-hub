@@ -4950,9 +4950,12 @@ async function openFohSchedule(){
   await fohLoadAttendance();
   fohSubscribeSchedRealtime();
 
-  // Render schedule into the tab content as a full-screen module
+  // Render schedule full-width — break out of the padded tab container
+  document.getElementById('foh-tab-content').style.padding = '0';
+  document.getElementById('foh-tab-content').style.maxWidth = 'none';
+  document.getElementById('foh-public').style.paddingBottom = '72px';
   el.innerHTML = `
-    <div id="foh-sched-module" style="margin:-20px -16px 0;padding:0">
+    <div id="foh-sched-module" style="margin:0;padding:0">
       <div class="sch-toolbar" style="position:sticky;top:52px;z-index:40">
         <div class="sch-nav">
           <button class="sch-nav-btn" onclick="fohSchedWeekOffset(-1)">&#8592;</button>
@@ -4973,7 +4976,7 @@ async function openFohSchedule(){
         </div>
       </div>
       <div id="foh-sch-week-view" style="overflow:auto;padding:0 0 80px">
-        <div id="foh-sch-grid-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding:12px 16px"></div>
+        <div id="foh-sch-grid-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0"></div>
       </div>
       <div id="foh-sch-day-view" style="display:none;overflow:auto;padding:16px 16px 80px">
         <div id="foh-sch-day-content"></div>
@@ -4998,6 +5001,10 @@ function fohTab(tab){
   document.querySelectorAll('.foh-nav-btn').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('fnav-'+tab);
   if(btn) btn.classList.add('active');
+
+  // Reset tab content constraints
+  var tc = document.getElementById('foh-tab-content');
+  if(tc){ tc.style.padding='20px 16px 0'; tc.style.maxWidth='600px'; }
 
   if(tab === 'home'){
     renderFohHome();
