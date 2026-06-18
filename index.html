@@ -4641,7 +4641,7 @@ function fohRenderSchedWeek(){
         }
         html += '</td>';
       }
-      html += '<td class="sch-td-hours">'+(wHours>0?wHours+'h':'—')+'</td>';
+      html += '<td class="sch-td-hours">'+(wHours>0?(Math.round(wHours*10)/10)+'h':'—')+'</td>';
       html += '<td class="sch-td-days">'+(wDays>0?wDays:'—')+'</td>';
       html += '</tr>';
     });
@@ -5029,7 +5029,7 @@ function fohSchedPrint(){
           html+='<td style="padding:4px;text-align:center;border:1px solid #ccc;color:#999">'+meta.label+'</td>';
         }
       });
-      html+='<td style="padding:4px;text-align:center;font-weight:700;border:1px solid #ccc">'+(wh>0?wh+'h':'—')+'</td>'+
+      html+='<td style="padding:4px;text-align:center;font-weight:700;border:1px solid #ccc">'+(wh>0?(Math.round(wh*10)/10)+'h':'—')+'</td>'+
         '<td style="padding:4px;text-align:center;border:1px solid #ccc">'+(wd||'—')+'</td></tr>';
     });
   });
@@ -5250,7 +5250,7 @@ async function fohSchedSendToHR(){
             rowData.push(meta.label); cellStatuses.push(entry.status);
           }
         }
-        rowData.push(wHours>0?wHours+'h':'', wDays||'');
+        rowData.push(wHours>0?(Math.round(wHours*10)/10)+'h':'', wDays||'');
         var dataRow=sheet.addRow(rowData);
         dataRow.height=18;
         dataRow.eachCell({includeEmpty:true},function(cell,colNumber){
