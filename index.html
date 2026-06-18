@@ -415,88 +415,98 @@
     position: fixed;
     inset: 0;
     z-index: 9999;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    transition: opacity 0.5s ease;
+  }
+  /* Left panel — cream brand panel */
+  .splash-left {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
+    padding: clamp(36px, 8vw, 96px) clamp(32px, 6vw, 80px);
+    background: #F8F4EC;
+    position: relative;
+    z-index: 2;
+  }
+  .splash-left::after {
+    content: '';
+    position: absolute;
+    top: 0; right: -1px; bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, var(--gold-dim), transparent);
+  }
+  /* Right panel — full photo */
+  .splash-right {
     background:
-      linear-gradient(180deg, rgba(44,24,16,0.72) 0%, rgba(74,21,32,0.88) 60%, rgba(44,24,16,0.96) 100%),
-      url('https://cdn.prod.website-files.com/68b1adb67aae8a1c4f33bfa5/6978863119fac3dc920f9f63_Home%20Gallery%20Image%20-%20Dubai%20-%20Scala.jpg') center/cover fixed;
-    text-align: center;
-    padding: 48px 32px;
-    transition: opacity 0.5s ease;
+      linear-gradient(180deg, rgba(44,24,16,0.12) 0%, rgba(44,24,16,0.30) 100%),
+      url('https://cdn.prod.website-files.com/68b1adb67aae8a1c4f33bfa5/6978863119fac3dc920f9f63_Home%20Gallery%20Image%20-%20Dubai%20-%20Scala.jpg') center/cover;
   }
   #foh-splash.hiding {
     opacity: 0;
     pointer-events: none;
   }
   .splash-logo {
-    width: min(260px, 68vw);
+    width: min(240px, 60vw);
     height: auto;
-    margin-bottom: 36px;
-    filter: brightness(0) invert(1);
-    opacity: 0.92;
+    margin-bottom: 44px;
   }
   .splash-rule {
-    width: 1px;
-    height: 56px;
-    background: linear-gradient(180deg, transparent, var(--gold), transparent);
-    margin: 0 auto 28px;
+    width: 48px;
+    height: 1px;
+    background: var(--gold);
+    margin: 0 0 28px;
   }
   .splash-eyebrow {
     font-size: 9px;
     font-weight: 600;
-    letter-spacing: 0.45em;
+    letter-spacing: 0.38em;
     text-transform: uppercase;
-    color: var(--gold-light);
-    margin-bottom: 16px;
+    color: var(--gold-dim);
+    margin-bottom: 14px;
   }
   .splash-title {
     font-family: 'Playfair Display', serif;
-    font-size: clamp(38px, 10vw, 72px);
+    font-size: clamp(36px, 4.5vw, 68px);
     font-weight: 400;
     font-style: italic;
-    color: #fff;
+    color: var(--vino-dark);
     letter-spacing: -0.01em;
     line-height: 1;
     margin-bottom: 10px;
   }
   .splash-sub {
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.42);
-    margin-bottom: 52px;
+    color: var(--text-light);
+    margin-bottom: 48px;
   }
   .splash-enter {
-    display: inline-block;
-    background: transparent;
-    border: 1px solid var(--gold);
-    color: var(--gold-light);
+    background: var(--vino);
+    border: none;
+    color: #fff;
     font-family: 'Inter', sans-serif;
     font-size: 10px;
     font-weight: 600;
-    letter-spacing: 0.38em;
+    letter-spacing: 0.32em;
     text-transform: uppercase;
-    padding: 14px 44px;
+    padding: 14px 40px;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    transition: background 0.2s;
   }
-  .splash-enter:hover {
-    background: var(--gold);
-    color: var(--vino-dark);
-    border-color: var(--gold);
-  }
+  .splash-enter:hover { background: var(--vino-dark); }
   .splash-date {
     position: absolute;
     bottom: 28px;
     left: 0;
     right: 0;
-    text-align: center;
+    padding: 0 clamp(32px, 6vw, 80px);
     font-size: 10px;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.28);
+    color: var(--text-light);
     pointer-events: none;
   }
   .splash-difc {
@@ -506,11 +516,18 @@
     font-size: 9px;
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.22);
+    color: rgba(44,24,16,0.28);
     pointer-events: none;
   }
-  @media (max-width: 480px) {
-    #foh-splash { background-attachment: scroll; }
+  /* Mobile: stack vertically, photo on top */
+  @media (max-width: 640px) {
+    #foh-splash { grid-template-columns: 1fr; grid-template-rows: 38vh 1fr; }
+    .splash-right { grid-row: 1; }
+    .splash-left { grid-row: 2; align-items: center; text-align: center; padding: 36px 28px 48px; }
+    .splash-left::after { display: none; }
+    .splash-logo { margin-bottom: 24px; }
+    .splash-rule { margin: 0 auto 20px; }
+    .splash-date { text-align: center; padding: 0 20px; }
   }
 
   /* -- APP SHELL -- */
@@ -1936,14 +1953,16 @@
 <!-- FOH PUBLIC HOME -->
 <!-- SPLASH LANDING — every employee lands here first -->
 <div id="foh-splash">
-  <div class="splash-difc">DIFC · Dubai</div>
-  <img class="splash-logo" src="https://cdn.prod.website-files.com/68b1adb67aae8a1c4f33bfa5/68d1e4ffcb7414691a2bf1a6_robertos_logo_burgundy_apostrophe_color.svg" alt="Roberto's">
-  <div class="splash-rule"></div>
-  <div class="splash-eyebrow">Roberto's DIFC</div>
-  <div class="splash-title">Front of House</div>
-  <div class="splash-sub">Team Portal</div>
-  <button class="splash-enter" onclick="splashEnter()">Enter</button>
-  <div class="splash-date" id="splash-date-label"></div>
+  <div class="splash-left">
+    <img class="splash-logo" src="https://cdn.prod.website-files.com/68b1adb67aae8a1c4f33bfa5/68d1e4ffcb7414691a2bf1a6_robertos_logo_burgundy_apostrophe_color.svg" alt="Roberto's">
+    <div class="splash-rule"></div>
+    <div class="splash-eyebrow">Roberto's DIFC</div>
+    <div class="splash-title">Front of House</div>
+    <div class="splash-sub">Team Portal</div>
+    <button class="splash-enter" onclick="splashEnter()">Enter</button>
+    <div class="splash-date" id="splash-date-label"></div>
+  </div>
+  <div class="splash-right"></div>
 </div>
 
 <div id="foh-public" style="display:none; flex-direction:column; min-height:100vh; background:var(--bg); padding-bottom:72px;">
