@@ -1668,47 +1668,131 @@
   .foh-quick-tile-sub { font-size:10px; color:rgba(64,2,7,0.45); margin-top:3px; font-style:italic; }
 
   /* ── FOH MODULE CARDS ── */
-  .foh-module-grid { display:flex; flex-direction:column; gap:10px; }
+  /* ── MODULE STYLE SWITCHER ── */
+  .foh-style-bar {
+    display: flex;
+    gap: 0;
+    padding: 10px 14px 0;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .foh-style-btn {
+    flex: 1;
+    padding: 6px 4px;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+    background: transparent;
+    border: 1px solid rgba(107,31,42,0.18);
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .foh-style-btn:first-child { border-radius: 2px 0 0 2px; }
+  .foh-style-btn:last-child { border-radius: 0 2px 2px 0; }
+  .foh-style-btn + .foh-style-btn { border-left: none; }
+  .foh-style-btn.active { background: var(--vino); color: #fff; border-color: var(--vino); }
+
+  /* ── STYLE A: compact list, left border ── */
+  .foh-module-grid { display:flex; flex-direction:column; gap:0; }
   .foh-module-card {
     background: #fff;
-    border: 1px solid var(--border);
+    border-bottom: 1px solid rgba(107,31,42,0.08);
     border-left: 3px solid var(--vino);
-    padding: 18px 18px 16px;
+    padding: 11px 14px 11px 12px;
     cursor: pointer;
     position: relative;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    box-shadow: 0 1px 6px rgba(44,24,16,0.06);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.12s;
   }
+  .foh-module-card:first-child { border-top: 1px solid rgba(107,31,42,0.08); }
   .foh-module-card:active { background: var(--surface2); }
-  .foh-module-card-top { margin-bottom: 6px; }
+  .foh-module-card.dim { opacity: 0.42; pointer-events: none; }
+  .foh-module-card-body { flex: 1; }
+  .foh-module-card-top { margin-bottom: 2px; }
   .foh-module-tag {
     display: inline-block;
-    font-size: 9px;
-    letter-spacing: 0.26em;
+    font-size: 8px;
+    letter-spacing: 0.24em;
     text-transform: uppercase;
-    color: var(--vino);
+    color: var(--gold-dim);
     font-weight: 600;
   }
+  .foh-module-tag.soon { color: #bbb; }
   .foh-module-name {
     font-family: 'Playfair Display', serif;
-    font-size: 20px;
+    font-size: 16px;
     color: var(--vino-dark);
-    margin-bottom: 5px;
+    line-height: 1.2;
   }
   .foh-module-desc {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-light);
-    line-height: 1.55;
+    line-height: 1.4;
+    margin-top: 1px;
   }
   .foh-module-arrow {
-    position: absolute;
-    right: 18px;
-    top: 50%;
-    transform: translateY(-50%);
+    font-size: 15px;
     color: var(--vino);
-    font-size: 18px;
-    opacity: 0.5;
+    opacity: 0.35;
+    flex-shrink: 0;
   }
+
+  /* ── STYLE B: 2-col grid ── */
+  .foh-module-grid.style-b {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .foh-module-grid.style-b .foh-module-card {
+    flex-direction: column;
+    align-items: flex-start;
+    border-left: none;
+    border-top: 2px solid var(--vino);
+    border-bottom: 1px solid rgba(107,31,42,0.1);
+    border-right: 1px solid rgba(107,31,42,0.1);
+    border-left: 1px solid rgba(107,31,42,0.1);
+    padding: 10px 10px 9px;
+    gap: 0;
+    box-shadow: 0 1px 4px rgba(44,24,16,0.06);
+  }
+  .foh-module-grid.style-b .foh-module-card:first-child { border-top: 2px solid var(--vino); }
+  .foh-module-grid.style-b .foh-module-card-body { width: 100%; }
+  .foh-module-grid.style-b .foh-module-name { font-size: 14px; margin-bottom: 3px; }
+  .foh-module-grid.style-b .foh-module-arrow { margin-top: 6px; font-size: 13px; }
+
+  /* ── STYLE C: minimal rows, dot + badge ── */
+  .foh-module-grid.style-c {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0 2px;
+  }
+  .foh-module-grid.style-c .foh-module-card {
+    border-left: none;
+    border-bottom: 1px solid rgba(107,31,42,0.07);
+    padding: 10px 4px;
+    gap: 10px;
+    background: transparent;
+  }
+  .foh-module-grid.style-c .foh-module-card:first-child { border-top: 1px solid rgba(107,31,42,0.07); }
+  .foh-module-grid.style-c .foh-module-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--vino); flex-shrink: 0; margin-top: 3px;
+  }
+  .foh-module-grid.style-c .foh-module-dot.gold { background: var(--gold-dim); }
+  .foh-module-grid.style-c .foh-module-dot.dim { background: #ccc; }
+  .foh-module-grid.style-c .foh-module-name { font-size: 15px; }
+  .foh-module-grid.style-c .foh-module-badge {
+    font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase;
+    padding: 2px 6px; border: 1px solid rgba(107,31,42,0.2);
+    color: var(--vino); flex-shrink: 0;
+  }
+  .foh-module-grid.style-c .foh-module-badge.soon { color: #bbb; border-color: #e0e0e0; }
+  .foh-module-grid.style-c .foh-module-arrow { font-size: 16px; }
 
   .foh-covers-loading { font-size:13px; color:rgba(255,255,255,0.4); font-style:italic; }
 
@@ -4305,6 +4389,70 @@ function fohDateLabel(short){
 }
 
 // ── HOME TAB ──
+// Module style: 'a' | 'b' | 'c'
+let fohModuleStyle = localStorage.getItem('foh_module_style') || 'a';
+
+function fohSetModuleStyle(s){
+  fohModuleStyle = s;
+  try{ localStorage.setItem('foh_module_style', s); }catch(e){}
+  const grid = document.getElementById('foh-module-grid');
+  if(!grid) return;
+  grid.className = 'foh-module-grid' + (s==='b' ? ' style-b' : s==='c' ? ' style-c' : '');
+  // update buttons
+  document.querySelectorAll('.foh-style-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.style === s);
+  });
+  // re-render dots for style-c
+  document.querySelectorAll('.foh-module-dot-wrap').forEach((w,i) => {
+    w.style.display = s === 'c' ? 'block' : 'none';
+  });
+  document.querySelectorAll('.foh-module-badge-wrap').forEach(w => {
+    w.style.display = s === 'c' ? 'flex' : 'none';
+  });
+}
+
+function fohModulesHTML(style){
+  const dotColors = ['','gold','','dim'];
+  const mods = [
+    { tag:'Live',    name:'Schedule',         desc:"Today's team, shifts and attendance.", action:"fohTab('schedule')", dim:false, dot:'' },
+    { tag:'Live',    name:'Events &amp; Reports', desc:'Listening Bar, Jazz Night, weekly planning.', action:"fohTab('manager')", dim:false, dot:'gold' },
+    { tag:'Coming',  name:'Operations',       desc:'Briefings and service standards.',    action:'', dim:true, dot:'dim' },
+  ];
+  if(style === 'b'){
+    return mods.map(m => `
+      <div class="foh-module-card${m.dim?' dim':''}" ${m.action?'onclick="'+m.action+'"':''}>
+        <div class="foh-module-card-body">
+          <div class="foh-module-card-top"><div class="foh-module-tag${m.dim?' soon':''}">${m.tag}</div></div>
+          <div class="foh-module-name">${m.name}</div>
+          <div class="foh-module-desc">${m.desc}</div>
+          ${!m.dim ? '<div class="foh-module-arrow">→</div>' : ''}
+        </div>
+      </div>`).join('');
+  }
+  if(style === 'c'){
+    return mods.map(m => `
+      <div class="foh-module-card${m.dim?' dim':''}" ${m.action?'onclick="'+m.action+'"':''}>
+        <div class="foh-module-dot ${m.dot||''}"></div>
+        <div class="foh-module-card-body">
+          <div class="foh-module-name">${m.name}</div>
+          <div class="foh-module-desc">${m.desc}</div>
+        </div>
+        <div class="foh-module-badge${m.dim?' soon':''}">${m.tag}</div>
+        ${!m.dim ? '<div class="foh-module-arrow">›</div>' : ''}
+      </div>`).join('');
+  }
+  // Style A (default)
+  return mods.map(m => `
+    <div class="foh-module-card${m.dim?' dim':''}" ${m.action?'onclick="'+m.action+'"':''}>
+      <div class="foh-module-card-body">
+        <div class="foh-module-card-top"><div class="foh-module-tag${m.dim?' soon':''}">${m.tag}</div></div>
+        <div class="foh-module-name">${m.name}</div>
+        <div class="foh-module-desc">${m.desc}</div>
+      </div>
+      <div class="foh-module-arrow">→</div>
+    </div>`).join('');
+}
+
 async function renderFohHome(){
   const el = document.getElementById('foh-tab-content');
   const today = fohTodayShort();
@@ -4312,7 +4460,6 @@ async function renderFohHome(){
   const todayEvent = FOH_EVENTS[today] || '';
   const tomorrowEvent = FOH_EVENTS[tomorrow] || '';
 
-  // Update date in hero header
   const now = new Date();
   const dateEl = document.getElementById('foh-date-display');
   if(dateEl){
@@ -4320,71 +4467,54 @@ async function renderFohHome(){
       now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}).replace(',','<br>');
   }
 
-  el.style.padding = '16px';
+  el.style.padding = '0';
   el.style.maxWidth = '600px';
-  el.innerHTML = `
-    <div class="foh-home-wrap">
 
-      <!-- Tonight covers card -->
-      <div class="foh-tonight-card">
+  const gridClass = 'foh-module-grid' + (fohModuleStyle==='b' ? ' style-b' : fohModuleStyle==='c' ? ' style-c' : '');
+
+  el.innerHTML = `
+    <div class="foh-home-wrap" style="gap:0">
+
+      <div class="foh-tonight-card" style="margin:12px 14px 10px;border-radius:2px;">
         <div class="foh-tonight-label">Tonight</div>
-        <div class="foh-tonight-day" id="foh-tn-day">${fohDateLabel(today)}${todayEvent ? ' · <em>'+todayEvent+'</em>' : ''}</div>
-        <div style="display:flex;align-items:baseline;gap:10px;margin:8px 0 4px;">
-          <div class="foh-tonight-count" id="foh-tn-count"><span style="font-size:28px;opacity:.4">—</span></div>
+        <div class="foh-tonight-day">${fohDateLabel(today)}${todayEvent ? ' &nbsp;·&nbsp; <em>'+todayEvent+'</em>' : ''}</div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin:6px 0 3px;">
+          <div class="foh-tonight-count" id="foh-tn-count"><span style="font-size:26px;opacity:.4">—</span></div>
           <div class="foh-tonight-unit">covers booked</div>
         </div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
-          <span style="font-size:22px;font-weight:600;color:rgba(255,255,255,0.7)" id="foh-tm-count">—</span>
-          <span style="font-size:11px;color:rgba(255,255,255,0.45)">tomorrow${tomorrowEvent ? ' · '+tomorrowEvent : ''}</span>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
+          <span style="font-size:20px;font-weight:600;color:rgba(255,255,255,0.65)" id="foh-tm-count">—</span>
+          <span style="font-size:10px;color:rgba(255,255,255,0.38)">tomorrow${tomorrowEvent ? ' · '+tomorrowEvent : ''}</span>
         </div>
         <div class="foh-tonight-sync" id="foh-tn-sync">Loading from SevenRooms…</div>
       </div>
 
-      <!-- Module cards -->
-      <div class="foh-module-grid">
-        <div class="foh-module-card" onclick="fohTab('schedule')">
-          <div class="foh-module-card-top">
-            <div class="foh-module-tag">Live</div>
-          </div>
-          <div class="foh-module-name">Schedule</div>
-          <div class="foh-module-desc">Today's team, shifts and clock-in status.</div>
-          <div class="foh-module-arrow">→</div>
-        </div>
-        <div class="foh-module-card" onclick="fohTab('manager')">
-          <div class="foh-module-card-top">
-            <div class="foh-module-tag">Manager</div>
-          </div>
-          <div class="foh-module-name">Events &amp; Reports</div>
-          <div class="foh-module-desc">Listening Bar, Jazz Night, weekly planning.</div>
-          <div class="foh-module-arrow">→</div>
-        </div>
+      <div class="foh-style-bar">
+        <button class="foh-style-btn${fohModuleStyle==='a'?' active':''}" data-style="a" onclick="fohSetModuleStyle('a')">A · List</button>
+        <button class="foh-style-btn${fohModuleStyle==='b'?' active':''}" data-style="b" onclick="fohSetModuleStyle('b')">B · Grid</button>
+        <button class="foh-style-btn${fohModuleStyle==='c'?' active':''}" data-style="c" onclick="fohSetModuleStyle('c')">C · Minimal</button>
+      </div>
+
+      <div id="foh-module-grid" class="${gridClass}" style="padding:10px 14px 16px;">
+        ${fohModulesHTML(fohModuleStyle)}
       </div>
 
     </div>
   `;
 
-  // Fetch live covers
   try {
     const todayISO_ = localISO(new Date());
     const tomorrowDate = new Date(); tomorrowDate.setDate(tomorrowDate.getDate()+1);
     const tomorrowISO_ = localISO(tomorrowDate);
-
     const { data: coversData, error } = await sbKitchen.from('covers')
-      .select('service_date, night_covers, day_covers')
+      .select('service_date, night_covers')
       .in('service_date', [todayISO_, tomorrowISO_]);
-
     if(error) throw error;
-
     const todayRow    = (coversData||[]).find(r => String(r.service_date).slice(0,10) === todayISO_);
     const tomorrowRow = (coversData||[]).find(r => String(r.service_date).slice(0,10) === tomorrowISO_);
-
-    const todayCovers    = todayRow    ? (todayRow.night_covers    ?? '—') : '—';
-    const tomorrowCovers = tomorrowRow ? (tomorrowRow.night_covers ?? '—') : '—';
-
-    document.getElementById('foh-tn-count').textContent = todayCovers;
-    document.getElementById('foh-tm-count').textContent = tomorrowCovers;
+    document.getElementById('foh-tn-count').textContent = todayRow ? (todayRow.night_covers ?? '—') : '—';
+    document.getElementById('foh-tm-count').textContent = tomorrowRow ? (tomorrowRow.night_covers ?? '—') : '—';
     document.getElementById('foh-tn-sync').textContent = 'Live · SevenRooms';
-
   } catch(e) {
     const sync = document.getElementById('foh-tn-sync');
     if(sync) sync.textContent = 'Could not load — check connection';
