@@ -4291,7 +4291,8 @@ function revMonthData(p){
     if(net!=null){ mtdNet+=net; tradingDays++; windowDay=d; if(tot!=null) coversAct+=tot; }
     days.push({d:d,date:ds,weekday:wd,closed:closed,budget:budget,net:net,restCov:rc,lounCov:lc,totalCov:tot,vsBudget:net!=null?net-budget:null,avgCover:(net!=null&&tot)?net/tot:null});
   }
-  return {period:p,days:days,mtdNet:mtdNet,budgetTotal:budgetTotal,coversAct:coversAct,tradingDays:tradingDays,windowDay:windowDay,target:R.targets[p]||0};
+  var budgetToDate=0; days.forEach(function(x){ if(!x.closed && x.d<=windowDay) budgetToDate+=x.budget; });
+  return {period:p,days:days,mtdNet:mtdNet,budgetTotal:budgetTotal,budgetToDate:budgetToDate,coversAct:coversAct,tradingDays:tradingDays,windowDay:windowDay};
 }
 function revAreaMTD(p){
   var map=revDailyMap(), dim=revDaysInMonth(p);
@@ -4333,7 +4334,6 @@ function revReview(p){
     venueLoun:{cur:cW.lounCov?cW.lounNet/cW.lounCov:0,prev:pW.lounCov?pW.lounNet/pW.lounCov:0,chg:revChg(cW.lounCov?cW.lounNet/cW.lounCov:0,pW.lounCov?pW.lounNet/pW.lounCov:0)},
     weekdays:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map(function(wd){ return {wd:wd,cur:cAvg[wd]||0,prev:pAvg[wd]||0,chg:revChg(cAvg[wd]||0,pAvg[wd]||0)}; }),
     mtd:cur.mtdNet, projected:proj, remaining:remaining, forecast:forecast,
-    target:cur.target, vsTarget:forecast-cur.target, vsTargetPct:cur.target?(forecast-cur.target)/cur.target:'',
     budgetTotal:cur.budgetTotal, vsBudget:forecast-cur.budgetTotal, vsBudgetPct:cur.budgetTotal?(forecast-cur.budgetTotal)/cur.budgetTotal:''
   };
 }
@@ -4341,18 +4341,8 @@ function revReview(p){
 // ── Navigation ──
 function revSetPeriod(p){ revInit().period=p; renderMain(); }
 function revStep(n){ var R=revInit(); revSetPeriod(revAddMonths(R.period,n)); }
-function revAddMonth(){ var R=revInit(); var next=revAddMonths(revLatestPeriod(),1); R.period=next; if(R.targets[next]==null){ // create target row (carry last month's, editable)
-    var prevT=R.targets[revPrevPeriod(next)]||0; R.targets[next]=prevT;
-    sb.from('rev_targets').upsert({period:next,monthly_target:prevT}).then(function(){});
-  } renderMain(); }
+function revAddMonth(){ var R=revInit(); R.period=revAddMonths(revLatestPeriod(),1); renderMain(); }
 function revSetView(v){ revInit().view=v; renderMain(); }
-function revEditTarget(){
-  var R=revInit(); var cur=R.targets[R.period]||0;
-  var v=prompt('Monthly target for '+revMonthLabel(R.period)+' (AED):', cur);
-  if(v===null) return; v=Number(String(v).replace(/[^0-9.]/g,'')); if(!isFinite(v)) return;
-  R.targets[R.period]=v;
-  sb.from('rev_targets').upsert({period:R.period,monthly_target:v}).then(function(res){ if(res.error) alert('Could not save target: '+res.error.message); renderMain(); });
-}
 
 // ── Edit a day ──
 function revEditDay(ds){
@@ -4387,7 +4377,7 @@ function revBriefing(){
   L.push('MTD net AED '+Math.round(rv.mtd).toLocaleString()+' over '+rv.tradingDays.cur+' trading days.');
   L.push('Vs '+revMonthLabel(rv.prevPeriod)+' matched window: net '+revPct(rv.net.chg)+', covers '+revPct(rv.covers.chg)+', avg spend/cover '+revPct(rv.spendCover.chg)+'.');
   L.push('Weekday avg net (this month): '+rv.weekdays.map(function(w){return w.wd.slice(0,3)+' '+Math.round(w.cur);}).join(', ')+'.');
-  L.push('Full-month forecast AED '+Math.round(rv.forecast).toLocaleString()+' vs target AED '+Math.round(rv.target).toLocaleString()+' ('+revPct(rv.vsTargetPct)+'), vs budget '+revPct(rv.vsBudgetPct)+'.');
+  L.push('Full-month forecast AED '+Math.round(rv.forecast).toLocaleString()+' vs budget AED '+Math.round(rv.budgetTotal).toLocaleString()+' ('+revPct(rv.vsBudgetPct)+').');
   L.push('Per-day net (entered): '+m.days.filter(function(d){return d.net!=null;}).map(function(d){return d.d+':'+Math.round(d.net);}).join(', ')+'.');
   return L.join('\n');
 }
@@ -4415,7 +4405,7 @@ function renderRevenue(){
 function revBar(pct){ var w=Math.max(0,Math.min(100,Math.round(pct))); return '<div class="rev-bar"><div class="rev-bar-fill" style="width:'+w+'%"></div></div>'; }
 function revRenderMonth(){
   var R=revInit(), p=R.period, m=revMonthData(p), rv=revReview(p);
-  var toTarget = m.target? Math.round(m.mtdNet/m.target*100):0;
+  var toBudget = m.budgetToDate? Math.round(m.mtdNet/m.budgetToDate*100):0;
   var h=[];
   h.push('<div class="rev-wrap">');
   // toolbar
@@ -4424,8 +4414,8 @@ function revRenderMonth(){
   // summary cards
   h.push('<div class="rev-cards">');
   h.push('<div class="rev-card"><div class="rev-k">MTD net sales</div><div class="rev-v">'+revMoney(m.mtdNet)+'</div><div class="rev-sub">'+m.tradingDays+' trading days</div></div>');
-  h.push('<div class="rev-card"><div class="rev-k">Month target</div><div class="rev-v">'+revMoney(m.target)+' <span class="rev-edit-link" onclick="revEditTarget()">edit</span></div>'+revBar(toTarget)+'<div class="rev-sub">'+toTarget+'% of target</div></div>');
-  h.push('<div class="rev-card"><div class="rev-k">Full-month forecast</div><div class="rev-v">'+revMoney(rv.forecast)+'</div><div class="rev-sub '+revPctClass(rv.vsTargetPct)+'">'+revPct(rv.vsTargetPct)+' vs target</div></div>');
+  h.push('<div class="rev-card"><div class="rev-k">Budget to date</div><div class="rev-v">'+revMoney(m.budgetToDate)+'</div>'+revBar(toBudget)+'<div class="rev-sub '+(m.mtdNet>=m.budgetToDate?'rev-pos':'rev-neg')+'">'+toBudget+'% of budget</div></div>');
+  h.push('<div class="rev-card"><div class="rev-k">Full-month forecast</div><div class="rev-v">'+revMoney(rv.forecast)+'</div><div class="rev-sub '+revPctClass(rv.vsBudgetPct)+'">'+revPct(rv.vsBudgetPct)+' vs budget</div></div>');
   h.push('<div class="rev-card"><div class="rev-k">Avg spend / cover</div><div class="rev-v">'+revMoney(rv.spendCover.cur)+'</div><div class="rev-sub '+revPctClass(rv.spendCover.chg)+'">'+revPct(rv.spendCover.chg)+' vs '+revMonthLabel(rv.prevPeriod).split(' ')[0]+'</div></div>');
   h.push('</div>');
   // by area (MTD) — Restaurant vs Scala
@@ -4441,13 +4431,16 @@ function revRenderMonth(){
   h.push('<div class="rev-section-h">Daily — '+revMonthLabel(p)+'</div>');
   h.push('<div class="rev-grid-wrap rev-grid-scroll"><table class="rev-grid"><thead><tr><th>Day</th><th>Net (actual)</th><th>Budget</th><th>vs Budget</th><th>Covers</th><th>Avg/cover</th></tr></thead><tbody>');
   m.days.forEach(function(d){
-    if(d.closed){ h.push('<tr class="rev-closed"><td>'+d.weekday.slice(0,3)+' '+d.d+'</td><td colspan="5">Sunday — closed</td></tr>'); return; }
-    var vsCls=d.vsBudget==null?'':(d.vsBudget>=0?'rev-pos':'rev-neg');
-    h.push('<tr onclick="revEditDay(\''+d.date+'\')">'
+    var sun=d.closed; // Sunday — normally closed, but enterable if opened (e.g. private event)
+    var vsCls=(!sun && d.vsBudget!=null)?(d.vsBudget>=0?'rev-pos':'rev-neg'):'';
+    var netCell=d.net!=null?revMoney(d.net):'<span class="rev-add">+ enter'+(sun?' (Sun)':'')+'</span>';
+    var budgetCell=sun?'<span class="rev-mut">—</span>':revMoney(d.budget);
+    var vsCell=(sun||d.vsBudget==null)?'—':((d.vsBudget>=0?'+':'')+revMoney(d.vsBudget).replace('AED ',''));
+    h.push('<tr onclick="revEditDay(\''+d.date+'\')"'+(sun?' class="rev-sun"':'')+'>'
       +'<td class="rev-day">'+d.weekday.slice(0,3)+' '+d.d+'</td>'
-      +'<td>'+(d.net!=null?revMoney(d.net):'<span class="rev-add">+ enter</span>')+'</td>'
-      +'<td class="rev-mut">'+revMoney(d.budget)+'</td>'
-      +'<td class="'+vsCls+'">'+(d.vsBudget!=null?(d.vsBudget>=0?'+':'')+revMoney(d.vsBudget).replace('AED ',''):'—')+'</td>'
+      +'<td>'+netCell+'</td>'
+      +'<td class="rev-mut">'+budgetCell+'</td>'
+      +'<td class="'+vsCls+'">'+vsCell+'</td>'
       +'<td>'+(d.totalCov!=null?d.totalCov:'—')+'</td>'
       +'<td>'+(d.avgCover!=null?revMoney(d.avgCover).replace('AED ',''):'—')+'</td></tr>');
   });
@@ -4475,7 +4468,6 @@ function revRenderMonth(){
     +'<div class="rev-proj-row"><span>Actual MTD</span><b>'+revMoney(rv.mtd)+'</b></div>'
     +'<div class="rev-proj-row"><span>Projected — '+rv.remaining+' remaining days (this month\'s weekday run-rate)</span><b>'+revMoney(rv.projected)+'</b></div>'
     +'<div class="rev-proj-row rev-proj-fore"><span>Forecast — full month</span><b>'+revMoney(rv.forecast)+'</b></div>'
-    +'<div class="rev-proj-row"><span>vs Target ('+revMoney(rv.target)+')</span><b class="'+revPctClass(rv.vsTargetPct)+'">'+revMoney(rv.vsTarget)+' · '+revPct(rv.vsTargetPct)+'</b></div>'
     +'<div class="rev-proj-row"><span>vs Budget ('+revMoney(rv.budgetTotal)+')</span><b class="'+revPctClass(rv.vsBudgetPct)+'">'+revMoney(rv.vsBudget)+' · '+revPct(rv.vsBudgetPct)+'</b></div></div>');
   h.push('<div id="rev-ai-out" class="rev-ai-out" style="display:none"></div>');
   h.push('</div>');
@@ -4486,18 +4478,18 @@ function revRenderYear(){
   h.push('<div class="rev-wrap">');
   h.push('<div class="rev-toolbar"><div class="rev-nav"><button class="rev-btn" onclick="revSetPeriod(\''+(parseInt(year)-1)+'-01\')">&#8592;</button><span class="rev-period">'+year+'</span><button class="rev-btn" onclick="revSetPeriod(\''+(parseInt(year)+1)+'-01\')">&#8594;</button></div>'
     +'<div class="rev-views"><button class="rev-vtab" onclick="revSetView(\'month\')">Month</button><button class="rev-vtab active" onclick="revSetView(\'year\')">Year</button></div></div>');
-  var ytdNet=0, ytdTarget=0;
+  var ytdNet=0, ytdBudget=0;
   h.push('<div class="rev-section-h">'+year+' — month by month</div>');
-  h.push('<div class="rev-grid-wrap"><table class="rev-grid"><thead><tr><th>Month</th><th>Net sales</th><th>Target</th><th>vs Target</th><th>Trading days</th></tr></thead><tbody>');
+  h.push('<div class="rev-grid-wrap"><table class="rev-grid"><thead><tr><th>Month</th><th>Net sales</th><th>Budget</th><th>vs Budget</th><th>Trading days</th></tr></thead><tbody>');
   for(var mo=1; mo<=12; mo++){
     var p=year+'-'+String(mo).padStart(2,'0'); var m=revMonthData(p);
-    if(m.tradingDays===0 && !m.target) continue;
-    ytdNet+=m.mtdNet; ytdTarget+=m.target;
-    var vs=m.target?(m.mtdNet-m.target)/m.target:'';
-    h.push('<tr onclick="revSetView(\'month\');revSetPeriod(\''+p+'\')"><td class="rev-day">'+new Date(parseInt(year),mo-1,1).toLocaleDateString('en-GB',{month:'long'})+'</td><td>'+revMoney(m.mtdNet)+'</td><td class="rev-mut">'+revMoney(m.target)+'</td><td class="'+revPctClass(vs)+'">'+revPct(vs)+'</td><td>'+m.tradingDays+'</td></tr>');
+    if(m.tradingDays===0) continue;
+    ytdNet+=m.mtdNet; ytdBudget+=m.budgetToDate;
+    var vs=m.budgetToDate?(m.mtdNet-m.budgetToDate)/m.budgetToDate:'';
+    h.push('<tr onclick="revSetView(\'month\');revSetPeriod(\''+p+'\')"><td class="rev-day">'+new Date(parseInt(year),mo-1,1).toLocaleDateString('en-GB',{month:'long'})+'</td><td>'+revMoney(m.mtdNet)+'</td><td class="rev-mut">'+revMoney(m.budgetToDate)+'</td><td class="'+revPctClass(vs)+'">'+revPct(vs)+'</td><td>'+m.tradingDays+'</td></tr>');
   }
-  var ytdVs=ytdTarget?(ytdNet-ytdTarget)/ytdTarget:'';
-  h.push('<tr class="rev-total"><td>YTD</td><td>'+revMoney(ytdNet)+'</td><td>'+revMoney(ytdTarget)+'</td><td class="'+revPctClass(ytdVs)+'">'+revPct(ytdVs)+'</td><td></td></tr>');
+  var ytdVs=ytdBudget?(ytdNet-ytdBudget)/ytdBudget:'';
+  h.push('<tr class="rev-total"><td>YTD</td><td>'+revMoney(ytdNet)+'</td><td>'+revMoney(ytdBudget)+'</td><td class="'+revPctClass(ytdVs)+'">'+revPct(ytdVs)+'</td><td></td></tr>');
   h.push('</tbody></table></div></div>');
   return h.join('');
 }
@@ -5823,6 +5815,8 @@ function fohSignOut(){
   .rev-add{color:var(--vino);opacity:.55;font-size:12px}
   .rev-closed td{color:var(--text-light);font-style:italic;background:rgba(0,0,0,.02);cursor:default}
   .rev-closed:hover{background:rgba(0,0,0,.02)!important}
+  .rev-sun td{background:rgba(107,31,42,.025)}
+  .rev-sun .rev-day{font-style:italic;color:var(--text-light)}
   .rev-total td{font-weight:700;color:var(--vino);border-top:2px solid var(--vino);background:var(--sabbia-light,#faf7f1)}
   .rev-pos{color:#2d7a4f;font-weight:600}
   .rev-neg{color:#b3402f;font-weight:600}
