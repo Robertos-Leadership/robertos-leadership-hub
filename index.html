@@ -4793,7 +4793,53 @@ function clRenderComments(){
     box.innerHTML=h;
   });
 }
-async function clSave(){
+// Build the branded HTML email from a saved closing-report row.
+function clEmailHTML(c, ds){
+  function n(x){ return x==null?0:Number(x); }
+  function m(x){ return 'AED '+Math.round(n(x)).toLocaleString(); }
+  function e(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  var rln=n(c.rest_lunch_net),rlc=n(c.rest_lunch_covers),rdn=n(c.rest_dinner_net),rdc=n(c.rest_dinner_covers);
+  var lln=n(c.lounge_lunch_net),llc=n(c.lounge_lunch_covers),ldn=n(c.lounge_dinner_net),ldc=n(c.lounge_dinner_covers);
+  var restNet=rln+rdn,restCov=rlc+rdc,lounNet=lln+ldn,lounCov=llc+ldc,net=restNet+lounNet,totCov=restCov+lounCov;
+  function avg(x,cov){ return cov?('AED '+Math.round(x/cov).toLocaleString()):'—'; }
+  var sr=clInit().srCovers,srLine='';
+  if(sr){ var srTot=n(sr.day_covers)+n(sr.night_covers); srLine='SevenRooms — dinner <b>'+n(sr.night_covers)+'</b>'+(n(sr.day_covers)?(' · lunch <b>'+n(sr.day_covers)+'</b>'):'')+' covers · entered '+totCov+(srTot===totCov?' &check;':''); }
+  var tips=n(c.cc_tips)+n(c.cash_tips), comps=c.comps||[], compsTot=comps.reduce(function(s,x){return s+n(x.amount);},0);
+  var dateLabel=new Date(ds+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var sh=c.shifts||{}, good=c.comments_good||[], bad=c.comments_bad||[];
+  var TD='style="text-align:right;padding:8px 9px;"', TH='style="text-align:right;padding:7px 9px;font-size:11px;text-transform:uppercase;"';
+  function row(name,lun,din,cov,av){ return '<tr style="border-bottom:1px solid #E3D8C6;"><td style="padding:8px 9px;font-weight:bold;">'+name+'</td><td '+TD+'>'+lun+'</td><td '+TD+'>'+din+'</td><td '+TD+'>'+cov+'</td><td '+TD+'>'+av+'</td></tr>'; }
+  var compRows = comps.length? comps.map(function(x){ return '<tr style="border-top:1px solid #E3D8C6;"><td style="padding:6px;">'+e(x.table)+'</td><td style="padding:6px;">'+e(x.guest)+'</td><td style="padding:6px;text-align:right;">'+m(x.amount)+'</td><td style="padding:6px;">'+e(x.reason)+'</td><td style="padding:6px;">'+e(x.manager)+'</td></tr>'; }).join('') : '<tr><td style="padding:6px;color:#9c8a72;" colspan="5">None</td></tr>';
+  function shiftLine(label,o){ o=o||{}; return '<strong style="color:#400207;">'+label+':</strong> '+(e(o.feedback)||'—')+(o.challenges?(' &nbsp;<em>Challenges:</em> '+e(o.challenges)):'')+'<br>'; }
+  function bullets(arr){ return arr.length? arr.map(function(t){return '&bull; '+e(t);}).join('<br>') : '<span style="color:#9c8a72;">—</span>'; }
+  return '<!doctype html><html><body style="margin:0;padding:0;background:#EFE7DA;font-family:Georgia,serif;color:#2C1810;"><div style="max-width:640px;margin:0 auto;background:#FBF7F0;">'
+    +'<div style="background:#400207;padding:24px 30px;"><div style="font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:#C9A84C;font-weight:bold;">Roberto\'s DIFC &middot; Operations</div><div style="font-family:Georgia,serif;font-size:25px;color:#FBF7F0;margin-top:8px;">Daily Closing Report</div><div style="font-size:13px;color:#E8D9C7;margin-top:6px;">'+dateLabel+'</div></div>'
+    +'<div style="padding:16px 30px;border-bottom:1px solid #E3D8C6;font-family:Arial,sans-serif;font-size:13px;color:#5b4a36;"><strong style="color:#400207;">Manager on duty</strong> &middot; AM: '+(e(c.manager_am)||'—')+' &middot; PM: '+(e(c.manager_pm)||'—')+'</div>'
+    +'<div style="padding:20px 30px 6px;"><div style="font-family:Georgia,serif;font-size:16px;color:#400207;border-bottom:2px solid #C9A84C;padding-bottom:6px;margin-bottom:12px;">Revenue</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;"><tr style="background:#400207;color:#FBF7F0;"><th style="text-align:left;padding:7px 9px;font-size:11px;text-transform:uppercase;">Area</th><th '+TH+'>Lunch</th><th '+TH+'>Dinner</th><th '+TH+'>Covers</th><th '+TH+'>Avg</th></tr>'
+    +row('Restaurant', rln?m(rln):'—', rdn?m(rdn):'—', restCov, avg(restNet,restCov))
+    +row('Scala Lounge &amp; Bar', lln?m(lln):'—', ldn?m(ldn):'—', lounCov, avg(lounNet,lounCov))
+    +'<tr style="background:#F3EADA;font-weight:bold;color:#400207;"><td style="padding:9px;">Total</td><td style="padding:9px;text-align:right;">'+((rln+lln)?m(rln+lln):'—')+'</td><td style="padding:9px;text-align:right;">'+m(rdn+ldn)+'</td><td style="padding:9px;text-align:right;">'+totCov+'</td><td style="padding:9px;text-align:right;">'+avg(net,totCov)+'</td></tr></table>'
+    +(srLine?'<div style="font-family:Arial,sans-serif;font-size:11px;color:#8B7355;margin-top:8px;">'+srLine+'</div>':'')+'</div>'
+    +'<div style="padding:12px 30px;"><table style="width:100%;font-family:Arial,sans-serif;font-size:13px;"><tr><td style="vertical-align:top;width:50%;padding-right:12px;"><div style="font-family:Georgia,serif;font-size:14px;color:#400207;margin-bottom:6px;">Sales split</div><div style="color:#5b4a36;line-height:1.7;">Food <strong>'+m(c.food_net)+'</strong><br>Beverage <strong>'+m(c.bev_net)+'</strong><br>Tobacco <strong>'+m(c.tobacco_net)+'</strong></div></td><td style="vertical-align:top;width:50%;padding-left:12px;border-left:1px solid #E3D8C6;"><div style="font-family:Georgia,serif;font-size:14px;color:#400207;margin-bottom:6px;">Tips</div><div style="color:#5b4a36;line-height:1.7;">CC <strong>'+m(c.cc_tips)+'</strong><br>Cash <strong>'+m(c.cash_tips)+'</strong><br>Total <strong>'+m(tips)+'</strong></div></td></tr></table></div>'
+    +'<div style="padding:10px 30px;"><div style="font-family:Georgia,serif;font-size:14px;color:#400207;border-bottom:2px solid #C9A84C;padding-bottom:5px;margin-bottom:10px;">Comps &middot; '+m(compsTot)+(net?(' ('+(compsTot/net*100).toFixed(1)+'% of net)'):'')+'</div><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:12px;color:#5b4a36;"><tr style="color:#9c8a72;text-transform:uppercase;font-size:10px;"><td style="padding:3px 6px;">Table</td><td style="padding:3px 6px;">Guest</td><td style="padding:3px 6px;text-align:right;">Amount</td><td style="padding:3px 6px;">Reason</td><td style="padding:3px 6px;">Mgr</td></tr>'+compRows+'</table></div>'
+    +(c.private_events?'<div style="padding:8px 30px;font-family:Arial,sans-serif;font-size:13px;color:#5b4a36;"><span style="font-family:Georgia,serif;color:#400207;">Private events:</span> '+e(c.private_events)+'</div>':'')
+    +'<div style="padding:12px 30px;"><div style="font-family:Georgia,serif;font-size:14px;color:#400207;border-bottom:2px solid #C9A84C;padding-bottom:5px;margin-bottom:10px;">Shift logs</div><div style="font-family:Arial,sans-serif;font-size:12px;color:#5b4a36;line-height:1.7;">'+shiftLine('Day (12&ndash;7)',sh.day)+shiftLine('Night (7&ndash;11)',sh.night)+shiftLine('Late (11&ndash;close)',sh.late)+'</div></div>'
+    +'<div style="padding:8px 30px 14px;"><table style="width:100%;font-family:Arial,sans-serif;font-size:12px;"><tr><td style="vertical-align:top;width:50%;padding-right:12px;"><div style="color:#2d7a4f;text-transform:uppercase;font-size:11px;font-weight:bold;margin-bottom:6px;">What went well</div><div style="color:#5b4a36;line-height:1.7;">'+bullets(good)+'</div></td><td style="vertical-align:top;width:50%;padding-left:12px;border-left:1px solid #E3D8C6;"><div style="color:#b3402f;text-transform:uppercase;font-size:11px;font-weight:bold;margin-bottom:6px;">What didn\'t</div><div style="color:#5b4a36;line-height:1.7;">'+bullets(bad)+'</div></td></tr></table></div>'
+    +(c.support?'<div style="padding:4px 30px 18px;font-family:Arial,sans-serif;font-size:13px;color:#5b4a36;"><span style="font-family:Georgia,serif;color:#400207;">Support needed:</span> '+e(c.support)+'</div>':'')
+    +'<div style="background:#400207;padding:14px 30px;font-family:Arial,sans-serif;font-size:11px;color:#C9A84C;">Submitted by '+(e(c.created_by)||'—')+' &middot; Roberto\'s DIFC</div></div></body></html>';
+}
+var CL_EMAIL_URL='https://paoaivwtkzujmrgrfjuq.supabase.co/functions/v1/send-closing-report';
+async function clEmail(crow, ds){
+  var subject="Roberto's DIFC — Daily Closing Report · "+new Date(ds+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  try{
+    var resp=await fetch(CL_EMAIL_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY,'apikey':SUPABASE_KEY},body:JSON.stringify({subject:subject, html:clEmailHTML(crow,ds)})});
+    var data=await resp.json();
+    if(!resp.ok) return {ok:false, msg:data.error||('HTTP '+resp.status)};
+    return {ok:true};
+  }catch(e){ return {ok:false, msg:String(e)}; }
+}
+async function clSave(andEmail){
   var C=clInit(), ds=clVal('cl-date')||C.date;
   function sum(a,b){ return (a==null&&b==null)?null:((a||0)+(b||0)); }
   var rl=clNum('cl-rl-net'),rlc=clNum('cl-rl-cov'),rd=clNum('cl-rd-net'),rdc=clNum('cl-rd-cov');
@@ -4812,9 +4858,11 @@ async function clSave(){
     comps:comps, shifts:shifts, private_events:clVal('cl-events')||null,
     comments_good:good, comments_bad:bad, support:clVal('cl-support')||null,
     created_by:(state.userEmail||null), updated_at:new Date().toISOString() };
-  var btn=document.getElementById('cl-save'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  var btns=[document.getElementById('cl-save'),document.getElementById('cl-save-email')];
+  function setBusy(t){ btns.forEach(function(b){ if(b){ b.disabled=!!t; } }); var se=document.getElementById('cl-save-email'); if(se) se.textContent=t?(andEmail?'Saving & emailing…':'Saving…'):'Save & Email'; }
+  setBusy(true);
   var res=await sb.from('closing_reports').upsert(crow,{onConflict:'service_date'});
-  if(res.error){ if(btn){btn.disabled=false;btn.textContent='Save';} alert('Could not save closing report: '+res.error.message+(res.error.code==='PGRST204'?'\n\nRun closing-report-schema.sql in Supabase first.':'')); return; }
+  if(res.error){ setBusy(false); alert('Could not save closing report: '+res.error.message+(res.error.code==='PGRST204'?'\n\nRun closing-report-schema.sql in Supabase first.':'')); return; }
   // ── Rollup into rev_daily (revenue fields only) ──
   var revRow={ service_date:ds,
     rest_lunch_net:rl, rest_lunch_covers:rlc, rest_dinner_net:rd, rest_dinner_covers:rdc,
@@ -4824,11 +4872,13 @@ async function clSave(){
   var res2=await sb.from('rev_daily').upsert(revRow,{onConflict:'service_date'});
   var R=revInit(); var idx=R.daily.findIndex(function(x){return String(x.service_date).slice(0,10)===ds;});
   if(idx>=0) R.daily[idx]=Object.assign({},R.daily[idx],revRow); else R.daily.push(revRow);
-  if(btn){ btn.disabled=false; btn.textContent='Save'; }
+  var emailMsg='';
+  if(andEmail){ var em=await clEmail(crow, ds); emailMsg = em.ok ? ' · emailed to the team' : ('\n\n⚠️ Email NOT sent: '+em.msg+'\n(Deploy send-closing-report + set RESEND_API_KEY.)'); }
+  setBusy(false);
   clClose();
   revInit().opsRecentLoaded=false;
   if(state.currentTab==='revenue'||state.currentTab==='operations') renderMain();
-  alert('Closing report saved'+(res2.error?(' — but revenue rollup failed: '+res2.error.message):' · revenue updated.'));
+  alert('Closing report saved'+(res2.error?(' — but revenue rollup failed: '+res2.error.message):' · revenue updated.')+emailMsg);
 }
 
 // ── Operations page (hosts the Closing Report + recent-report history) ──
@@ -6388,7 +6438,8 @@ function fohSignOut(){
     </div>
     <div class="cl-foot">
       <button class="cl-cancel" onclick="clClose()">Cancel</button>
-      <button id="cl-save" class="cl-save" onclick="clSave()">Save</button>
+      <button id="cl-save" class="cl-save-only" onclick="clSave(false)">Save</button>
+      <button id="cl-save-email" class="cl-save" onclick="clSave(true)">Save &amp; Email</button>
     </div>
   </div>
 </div>
@@ -6544,6 +6595,7 @@ function fohSignOut(){
   .cl-foot{display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--border);background:var(--cream)}
   .cl-cancel{flex:1;padding:11px;background:transparent;border:1px solid var(--sabbia-dark);border-radius:6px;cursor:pointer;font-family:var(--font-sans);color:var(--ink)}
   .cl-save{flex:2;padding:11px;background:var(--vino);border:none;border-radius:6px;cursor:pointer;font-family:var(--font-sans);color:var(--cream);font-weight:700}
+  .cl-save-only{flex:1;padding:11px;background:transparent;border:1px solid var(--vino);border-radius:6px;cursor:pointer;font-family:var(--font-sans);color:var(--vino);font-weight:700}
   .cl-open-btn{background:var(--vino)!important;color:var(--cream)!important;border-color:var(--vino)!important;font-weight:700}
   @media(max-width:560px){ .cl-comp-row{grid-template-columns:1fr 1fr} .cl-comments{grid-template-columns:1fr} .cl-row3{grid-template-columns:1fr} }
   .ops-wrap{max-width:980px;margin:0 auto;padding:8px 4px 60px}
