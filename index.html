@@ -5437,6 +5437,8 @@ let fohSchedLastSync   = '';
 const FOH_SCHED_PIN = '2468';
 const FOH_SCHED_LOCK_TIMEOUT = 5 * 60 * 1000;
 let fohSchedUnlocked     = false;
+let fohSchedClipboard    = null;   // copied shift {status,times…,srcStaff,srcDate,label}
+let fohSchedPasteMode    = false;  // while true, tapping a cell pastes instead of opening the editor
 let fohSchedLockTimer    = null;
 let fohSchedPendingAction= null;
 const FOH_ATT_START      = '2026-06-13';
@@ -5769,6 +5771,7 @@ function fohRenderSchedDay(){
 // ── Edit modal ──
 function fohSchedOpenEdit(staffId, date){
   if(!fohSchedGuard(function(){ fohSchedOpenEdit(staffId,date); })) return;
+  if(fohSchedPasteMode){ fohSchedPasteToCell(staffId, date); return; }   // paste mode: tap = paste
   fohSchedEditTarget = { staffId:staffId, date:date };
   var staff = fohSchedStaff.find(function(s){ return s.id===staffId; });
   var row = fohSchedRoster[fohSchedRosterKey(staffId,date)];
@@ -5841,6 +5844,84 @@ async function fohSchedSaveShift(){
   if(res.error){ console.error('Save error:',res.error); alert('Could not save the shift: '+res.error.message); }
   fohSchedEditTarget=null;
 }
+
+// ── Copy / paste shifts (Excel-style: copy a cell, then tap others to paste) ──
+function fohSchedCopyShift(){
+  if(!fohSchedEditTarget) return;
+  var status=document.getElementById('foh-sch-status-sel').value;
+  var start=document.getElementById('foh-sch-start-h').value+':'+document.getElementById('foh-sch-start-m').value;
+  var end  =document.getElementById('foh-sch-end-h').value  +':'+document.getElementById('foh-sch-end-m').value;
+  var hasSplit2=document.getElementById('foh-sch-split-fields').style.display!=='none';
+  var start2=hasSplit2?document.getElementById('foh-sch-start2-h').value+':'+document.getElementById('foh-sch-start2-m').value:null;
+  var end2  =hasSplit2?document.getElementById('foh-sch-end2-h').value  +':'+document.getElementById('foh-sch-end2-m').value  :null;
+  var working=status==='working';
+  fohSchedClipboard={
+    status:status,
+    shift_start: working?start:null,  shift_end: working?end:null,
+    shift_start2:working?start2:null, shift_end2:working?end2:null,
+    srcStaff:fohSchedEditTarget.staffId, srcDate:fohSchedEditTarget.date,
+    label: working ? (start+'–'+end+(start2&&end2?(' + '+start2+'–'+end2):''))
+                   : ((FOH_STATUS_META[status]||{label:status}).label||status)
+  };
+  document.getElementById('foh-sch-modal').style.display='none';
+  fohSchedEditTarget=null;
+  fohSchedPasteMode=true;
+  fohSchedWriteClipboard([{staffId:fohSchedClipboard.srcStaff, date:fohSchedClipboard.srcDate}]); // keep the source cell
+  fohSchedShowPasteBar();   // "Copied … tap cells to paste"
+}
+// write the clipboard shift to a list of {staffId,date} cells — update, render, upsert (no banner)
+async function fohSchedWriteClipboard(targets){
+  if(!fohSchedClipboard || !targets.length) return 0;
+  var c=fohSchedClipboard, now=new Date().toISOString(), payloads=[];
+  targets.forEach(function(t){
+    var key=fohSchedRosterKey(t.staffId,t.date);
+    var payload=Object.assign({}, fohSchedRoster[key]||{}, {
+      staff_id:t.staffId, work_date:t.date, status:c.status,
+      shift_start:c.shift_start, shift_end:c.shift_end,
+      shift_start2:c.shift_start2, shift_end2:c.shift_end2, updated_at:now
+    });
+    fohSchedRoster[key]=payload; payloads.push(payload);
+  });
+  fohRenderSchedWeek();
+  var res=await sb.from('foh_roster').upsert(payloads,{onConflict:'staff_id,work_date'});
+  if(res.error){ console.error('Paste error:',res.error); alert('Could not paste the shift: '+res.error.message); return 0; }
+  return payloads.length;
+}
+function fohSchedPasteToCell(staffId, date){
+  fohSchedWriteClipboard([{staffId:staffId, date:date}]).then(function(n){ if(n) fohSchedShowPasteBar(n); });
+}
+function fohSchedFillWeek(){
+  if(!fohSchedClipboard) return;
+  var t=[]; for(var i=0;i<7;i++) t.push({staffId:fohSchedClipboard.srcStaff, date:formatDate(addDays(fohSchedWeekStart,i))});
+  fohSchedWriteClipboard(t).then(function(n){ if(n) fohSchedShowPasteBar(n); });
+}
+function fohSchedFillDay(){
+  if(!fohSchedClipboard) return;
+  var t=fohSchedStaff.map(function(s){ return {staffId:s.id, date:fohSchedClipboard.srcDate}; });
+  fohSchedWriteClipboard(t).then(function(n){ if(n) fohSchedShowPasteBar(n); });
+}
+function fohSchedShowPasteBar(pastedCount){
+  var host=document.getElementById('foh-sched-fullscreen')||document.body;
+  var bar=document.getElementById('foh-paste-bar');
+  if(!bar){
+    bar=document.createElement('div'); bar.id='foh-paste-bar';
+    bar.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9500;background:var(--vino,#6B1F2A);color:#fff;padding:9px 12px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:8px;font-family:var(--font-sans),sans-serif;font-size:13px;max-width:94vw;flex-wrap:wrap;justify-content:center';
+    host.appendChild(bar);
+  }
+  var bs='padding:6px 11px;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.12);color:#fff;border-radius:6px;cursor:pointer;font:inherit;font-weight:600';
+  var msg = pastedCount ? ('&#9989; Pasted to '+pastedCount+' cell'+(pastedCount===1?'':'s')+' &middot; keep tapping or Done')
+                        : ('&#128203; Copied <b>'+(fohSchedClipboard?fohSchedClipboard.label:'')+'</b> &middot; tap cells to paste');
+  bar.innerHTML='<span style="margin-right:2px">'+msg+'</span>'+
+    '<button onclick="fohSchedFillWeek()" style="'+bs+'">Fill person’s week</button>'+
+    '<button onclick="fohSchedFillDay()" style="'+bs+'">Fill whole day</button>'+
+    '<button onclick="fohSchedEndPaste()" style="'+bs+';background:#fff;color:var(--vino,#6B1F2A)">Done</button>';
+  bar.style.display='flex';
+}
+function fohSchedEndPaste(){
+  fohSchedPasteMode=false; fohSchedClipboard=null;
+  var bar=document.getElementById('foh-paste-bar'); if(bar) bar.style.display='none';
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Escape' && fohSchedPasteMode) fohSchedEndPaste(); });
 
 // ── Inline edit emp_id ──
 function fohSchedEditEmpId(event, staffId){
@@ -6110,6 +6191,7 @@ function fohSubscribeSchedRealtime(){
 
 // ── Open schedule page ──
 async function openFohSchedule(){
+  fohSchedEndPaste();   // clear any leftover paste mode from a previous visit
   // Take over the full screen — hide FOH public, show schedule as its own page
   document.getElementById('foh-public').style.display = 'none';
   document.getElementById('foh-nav').style.display = 'none';
@@ -6614,6 +6696,7 @@ function chkResign(){ var C=chkInit(); if(C.row){ C.row=Object.assign({},C.row,{
       <label style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--vino-light);font-family:var(--font-sans)">Notes</label>
       <input id="foh-sch-notes-inp" type="text" placeholder="Optional note..." style="width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--sabbia-dark);border-radius:4px;font-family:var(--font-sans);background:var(--sabbia-light);color:var(--ink);font-size:14px">
     </div>
+    <button onclick="fohSchedCopyShift()" style="width:100%;box-sizing:border-box;margin-bottom:10px;padding:9px;background:transparent;border:1px dashed var(--vino);border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--vino);font-weight:600">&#128203; Copy shift — then tap cells to paste</button>
     <div style="display:flex;gap:10px">
       <button onclick="fohSchedCloseModal()" style="flex:1;padding:10px;background:transparent;border:1px solid var(--sabbia-dark);border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--ink)">Cancel</button>
       <button onclick="fohSchedSaveShift()" style="flex:1;padding:10px;background:var(--vino);border:none;border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--cream);font-weight:700">Save</button>
