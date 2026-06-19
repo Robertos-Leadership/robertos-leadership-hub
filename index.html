@@ -1938,6 +1938,17 @@
   .sch-grid td.sch-td-role{text-align:left;padding:4px 8px;background:var(--sabbia-light);font-size:11px;color:var(--vino-light);white-space:nowrap}
   .sch-grid tr.sch-station-hdr td{background:var(--vino);color:var(--cream);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:6px 12px;font-weight:700}
   .sch-grid tr:hover td:not(.sch-td-name){filter:brightness(.97)}
+  .sch-grid tr.sch-events-row:hover td{filter:none}
+  .sch-events-label{background:var(--sabbia-light);text-align:left!important;padding:5px 12px!important;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--vino-light);font-weight:700;position:sticky;left:0;z-index:1}
+  .sch-events-cell{cursor:pointer;vertical-align:top!important;padding:3px!important;background:var(--cream)}
+  .sch-events-cell:hover{background:var(--sabbia-light)}
+  .sch-event-chip{background:rgba(107,31,42,.08);color:var(--vino);border:1px solid rgba(107,31,42,.20);border-radius:4px;padding:3px 6px;font-size:10px;font-weight:600;line-height:1.25;margin-bottom:3px;white-space:normal;text-align:center}
+  .sch-event-chip:last-child{margin-bottom:0}
+  .sch-event-add{color:var(--sabbia-dark);text-align:center;font-size:14px;line-height:1.3}
+  .foh-ev-preset{background:rgba(107,31,42,.05);border:1px solid var(--sabbia-dark);color:var(--vino);border-radius:5px;padding:6px 9px;font-size:11px;font-family:var(--font-sans);cursor:pointer}
+  .foh-ev-preset.on{background:var(--vino);color:var(--cream);border-color:var(--vino);font-weight:600}
+  .foh-ev-selchip{display:inline-flex;align-items:center;gap:5px;background:rgba(107,31,42,.10);color:var(--vino);border:1px solid rgba(107,31,42,.25);border-radius:5px;padding:4px 8px;font-size:11px;font-weight:600;margin:0 5px 5px 0}
+  .foh-ev-x{cursor:pointer;font-size:14px;line-height:1;color:var(--vino-light)}
   .sch-td-hours{background:var(--sabbia-light);font-size:12px;color:var(--vino);font-weight:700;min-width:44px}
   .sch-td-days{background:var(--sabbia-light);font-size:12px;color:var(--vino-light);min-width:32px}
   .sch-cell{cursor:pointer;min-width:88px;padding:3px 2px}
@@ -5446,6 +5457,11 @@ let fohSchedEditTarget = null;
 let fohSchedRTChannel  = null;
 let fohSchedAttendance = {};
 let fohSchedLastSync   = '';
+let fohSchedEvents     = {};    // date(YYYY-MM-DD) -> [{slot,name}] (max 2 per day)
+let fohSchedEventDate  = null;  // day being edited in the events modal
+let fohSchedEventSel   = [];    // names currently selected in the events modal (max 2)
+const FOH_EVENT_PRESETS = ['Listening Night','Jazz Bar','Comedy Night','Cigar','Aperitivo','Breakfast','Private Event','Brunch'];
+function fohEvEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 const FOH_SCHED_PIN = '2468';
 const FOH_SCHED_LOCK_TIMEOUT = 5 * 60 * 1000;
@@ -5522,13 +5538,25 @@ async function fohLoadSchedData(){
   var weekFrom = formatDate(addDays(fohSchedWeekStart, -7));
   var res = await Promise.all([
     sb.from('foh_staff').select('*').eq('active', true).order('sort_order'),
-    sb.from('foh_roster').select('*').gte('work_date', weekFrom).lte('work_date', weekEnd)
+    sb.from('foh_roster').select('*').gte('work_date', weekFrom).lte('work_date', weekEnd),
+    sb.from('foh_events').select('*').gte('event_date', weekFrom).lte('event_date', weekEnd)
   ]);
   fohSchedStaff = res[0].data || [];
   fohSchedRoster = {};
   (res[1].data || []).forEach(function(r){
     fohSchedRoster[fohSchedRosterKey(r.staff_id, String(r.work_date).slice(0,10))] = r;
   });
+  // Events (table is optional — if it isn't created yet, res[2].error is set and we just show none)
+  fohSchedEvents = {};
+  if(res[2] && !res[2].error){
+    (res[2].data || []).forEach(function(e){
+      var d = String(e.event_date).slice(0,10);
+      (fohSchedEvents[d] = fohSchedEvents[d] || []).push({ slot:e.slot||1, name:e.name });
+    });
+    Object.keys(fohSchedEvents).forEach(function(d){
+      fohSchedEvents[d].sort(function(a,b){ return a.slot - b.slot; });
+    });
+  }
 }
 
 async function fohLoadAttendance(){
@@ -5641,6 +5669,21 @@ function fohRenderSchedWeek(){
       '<br><span style="font-size:10px;opacity:.8">' + days[di].toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + '</span></th>';
   }
   html += '<th>Hrs</th><th>Days</th></tr></thead><tbody>';
+
+  // Events strip — one cell per day, up to 2 events each
+  html += '<tr class="sch-events-row"><td class="sch-events-label" colspan="2">Events</td>';
+  for(var ei=0;ei<days.length;ei++){
+    var eds = formatDate(days[ei]);
+    var evs = fohSchedEvents[eds] || [];
+    html += '<td class="sch-events-cell'+(eds===today?' sch-cell-today':'')+'" onclick="fohSchedOpenEvents(\''+eds+'\')">';
+    if(evs.length){
+      evs.forEach(function(ev){ html += '<div class="sch-event-chip">'+fohEvEsc(ev.name)+'</div>'; });
+    } else {
+      html += '<div class="sch-event-add">+</div>';
+    }
+    html += '</td>';
+  }
+  html += '<td colspan="2"></td></tr>';
 
   FOH_SECTIONS.forEach(function(sec){
     var allStaff = fohSchedStaff.filter(function(s){ return s.section === sec.key; });
@@ -5855,6 +5898,86 @@ async function fohSchedSaveShift(){
   var res=await sb.from('foh_roster').upsert(payload,{onConflict:'staff_id,work_date'});
   if(res.error){ console.error('Save error:',res.error); alert('Could not save the shift: '+res.error.message); }
   fohSchedEditTarget=null;
+}
+
+// ── Day events (up to 2 per day, shown at the top of the schedule) ──
+function fohSchedOpenEvents(date){
+  if(!fohSchedGuard(function(){ fohSchedOpenEvents(date); })) return;
+  fohSchedEventDate = date;
+  var evs = fohSchedEvents[date] || [];
+  fohSchedEventSel = evs.map(function(e){ return e.name; }).slice(0,2);
+  var d = new Date(date+'T12:00:00');
+  document.getElementById('foh-sch-ev-title').textContent =
+    d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}) + ' · events';
+  document.getElementById('foh-sch-ev-custom').value = '';
+  fohSchedRenderEventPicker();
+  document.getElementById('foh-sch-ev-modal').style.display = 'flex';
+}
+function fohSchedRenderEventPicker(){
+  document.getElementById('foh-sch-ev-presets').innerHTML = FOH_EVENT_PRESETS.map(function(p){
+    var on = fohSchedEventSel.indexOf(p) >= 0;
+    return '<button type="button" class="foh-ev-preset'+(on?' on':'')+'" onclick="fohSchedToggleEvent(\''+p+'\')">'+p+'</button>';
+  }).join('');
+  var sel = document.getElementById('foh-sch-ev-selected');
+  if(fohSchedEventSel.length){
+    sel.innerHTML = fohSchedEventSel.map(function(n,i){
+      return '<span class="foh-ev-selchip">'+fohEvEsc(n)+'<span class="foh-ev-x" onclick="fohSchedRemoveEvent('+i+')">&times;</span></span>';
+    }).join('');
+  } else {
+    sel.innerHTML = '<span style="font-size:11px;color:var(--vino-light)">No events yet — tap up to 2.</span>';
+  }
+}
+function fohSchedToggleEvent(name){
+  var i = fohSchedEventSel.indexOf(name);
+  if(i >= 0){ fohSchedEventSel.splice(i,1); }
+  else {
+    if(fohSchedEventSel.length >= 2){ alert('Up to 2 events per day — remove one first.'); return; }
+    fohSchedEventSel.push(name);
+  }
+  fohSchedRenderEventPicker();
+}
+function fohSchedRemoveEvent(i){ fohSchedEventSel.splice(i,1); fohSchedRenderEventPicker(); }
+function fohSchedAddCustomEvent(){
+  var inp = document.getElementById('foh-sch-ev-custom');
+  var v = inp.value.trim();
+  if(!v) return;
+  if(fohSchedEventSel.length >= 2){ alert('Up to 2 events per day — remove one first.'); return; }
+  if(fohSchedEventSel.indexOf(v) < 0) fohSchedEventSel.push(v);
+  inp.value = '';
+  fohSchedRenderEventPicker();
+}
+function fohSchedEventCustomKey(e){ if(e && e.key==='Enter'){ e.preventDefault(); fohSchedAddCustomEvent(); } }
+function fohSchedCloseEvents(e){
+  if(e && e.target !== document.getElementById('foh-sch-ev-modal')) return;
+  document.getElementById('foh-sch-ev-modal').style.display='none';
+  fohSchedEventDate=null;
+}
+function fohSchedClearDayEvents(){ fohSchedEventSel=[]; fohSchedSaveEvents(); }
+async function fohSchedSaveEvents(){
+  if(!fohSchedEventDate) return;
+  var date = fohSchedEventDate;
+  // pull in any text left unsubmitted in the custom box
+  var inp = document.getElementById('foh-sch-ev-custom');
+  if(inp){ var pend = inp.value.trim(); if(pend && fohSchedEventSel.length<2 && fohSchedEventSel.indexOf(pend)<0) fohSchedEventSel.push(pend); }
+  var names = fohSchedEventSel.slice(0,2);
+  // optimistic local update + re-render
+  if(names.length) fohSchedEvents[date] = names.map(function(n,i){ return {slot:i+1, name:n}; });
+  else delete fohSchedEvents[date];
+  document.getElementById('foh-sch-ev-modal').style.display='none';
+  fohSchedEventDate=null;
+  fohRenderSchedWeek();
+  // persist: clear the day, then insert the chosen events
+  var del = await sb.from('foh_events').delete().eq('event_date',date);
+  if(del.error){
+    console.error('Events clear error:',del.error);
+    alert('Could not save events: '+del.error.message + (del.error.code==='42P01'?'\n\nCreate the foh_events table in Supabase first (run foh-events-schema.sql).':''));
+    return;
+  }
+  if(names.length){
+    var rows = names.map(function(n,i){ return {event_date:date, slot:i+1, name:n, updated_at:new Date().toISOString()}; });
+    var ins = await sb.from('foh_events').insert(rows);
+    if(ins.error){ console.error('Events save error:',ins.error); alert('Could not save events: '+ins.error.message); }
+  }
 }
 
 // ── Copy / paste shifts (Excel-style: copy a cell, then tap others to paste) ──
@@ -6119,6 +6242,19 @@ async function fohSchedConfirmDuplicate(){
   if(!upserts.length){ alert('Nothing to duplicate — source week is empty or target is fully set.'); return; }
   var res=await sb.from('foh_roster').upsert(upserts,{onConflict:'staff_id,work_date',ignoreDuplicates:!overwrite});
   if(res.error){ console.error('Duplicate error:',res.error); alert('Could not duplicate the week: '+res.error.message); return; }
+  // Duplicate the day-events to the target week (best-effort; table is optional)
+  try{
+    var evRows=[];
+    for(var ek=0;ek<7;ek++){
+      var esd=formatDate(addDays(fohSchedWeekStart,ek));
+      var etgt=formatDate(addDays(new Date(esd+'T12:00:00'),offsetDays));
+      (fohSchedEvents[esd]||[]).forEach(function(ev){
+        evRows.push({event_date:etgt, slot:ev.slot, name:ev.name, updated_at:new Date().toISOString()});
+      });
+    }
+    if(overwrite) await sb.from('foh_events').delete().gte('event_date',tFrom).lte('event_date',tTo);
+    if(evRows.length) await sb.from('foh_events').upsert(evRows,{onConflict:'event_date,slot',ignoreDuplicates:!overwrite});
+  }catch(err){ console.error('Event duplicate error:',err); }
   fohSchedWeekStart=target;
   await fohLoadSchedData(); await fohLoadAttendance(); fohRenderSchedView();
 }
@@ -6713,6 +6849,24 @@ function chkResign(){ var C=chkInit(); if(C.row){ C.row=Object.assign({},C.row,{
     <div style="display:flex;gap:10px">
       <button onclick="fohSchedCloseModal()" style="flex:1;padding:10px;background:transparent;border:1px solid var(--sabbia-dark);border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--ink)">Cancel</button>
       <button onclick="fohSchedSaveShift()" style="flex:1;padding:10px;background:var(--vino);border:none;border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--cream);font-weight:700">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOH Schedule: Day events modal -->
+<div id="foh-sch-ev-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center" onclick="fohSchedCloseEvents(event)">
+  <div style="background:var(--cream);border-radius:8px;padding:24px;width:340px;max-width:94vw;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+    <div id="foh-sch-ev-title" style="font-family:var(--font-serif);font-size:16px;color:var(--vino);margin-bottom:14px;font-weight:700"></div>
+    <div id="foh-sch-ev-selected" style="margin-bottom:14px;min-height:24px"></div>
+    <label style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--vino-light);font-family:var(--font-sans)">Add an event</label>
+    <div id="foh-sch-ev-presets" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 14px"></div>
+    <div style="display:flex;gap:6px;margin-bottom:16px">
+      <input id="foh-sch-ev-custom" type="text" placeholder="or type your own…" onkeydown="fohSchedEventCustomKey(event)" style="flex:1;box-sizing:border-box;padding:8px;border:1px solid var(--sabbia-dark);border-radius:4px;font-family:var(--font-sans);background:var(--sabbia-light);color:var(--ink);font-size:14px">
+      <button onclick="fohSchedAddCustomEvent()" style="padding:8px 12px;background:transparent;border:1px solid var(--vino);border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--vino);font-weight:600">Add</button>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="fohSchedClearDayEvents()" style="flex:1;padding:10px;background:transparent;border:1px solid var(--sabbia-dark);border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--vino-light)">Clear day</button>
+      <button onclick="fohSchedSaveEvents()" style="flex:1;padding:10px;background:var(--vino);border:none;border-radius:4px;cursor:pointer;font-family:var(--font-sans);color:var(--cream);font-weight:700">Save</button>
     </div>
   </div>
 </div>
