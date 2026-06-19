@@ -6354,7 +6354,22 @@ function fohSubscribeSchedRealtime(){
       if(payload.eventType==='DELETE') delete fohSchedRoster[k];
       else fohSchedRoster[k]=Object.assign({},payload.new,{work_date:workDate});
       fohRenderSchedView();
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'foh_events'},function(){
+      // Events change in slots; reload the visible range and re-render (debounced)
+      if(fohSchedEvRTTimer) clearTimeout(fohSchedEvRTTimer);
+      fohSchedEvRTTimer=setTimeout(function(){ fohReloadEvents().then(fohRenderSchedView); },200);
     }).subscribe();
+}
+let fohSchedEvRTTimer=null;
+async function fohReloadEvents(){
+  var weekEnd=formatDate(addDays(fohSchedWeekStart,13)), weekFrom=formatDate(addDays(fohSchedWeekStart,-7));
+  var res=await sb.from('foh_events').select('*').gte('event_date',weekFrom).lte('event_date',weekEnd);
+  fohSchedEvents={};
+  if(!res.error){
+    (res.data||[]).forEach(function(e){ var d=String(e.event_date).slice(0,10); (fohSchedEvents[d]=fohSchedEvents[d]||[]).push({slot:e.slot||1,name:e.name}); });
+    Object.keys(fohSchedEvents).forEach(function(d){ fohSchedEvents[d].sort(function(a,b){return a.slot-b.slot;}); });
+  }
 }
 
 // ── Open schedule page ──
