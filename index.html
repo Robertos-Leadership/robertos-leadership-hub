@@ -4870,9 +4870,20 @@ async function clOpen(ds){
   C.comps=(row&&Array.isArray(row.comps))?row.comps.slice():[];
   C.good=(row&&Array.isArray(row.comments_good))?row.comments_good.slice():[];
   C.bad=(row&&Array.isArray(row.comments_bad))?row.comments_bad.slice():[];
-  // SevenRooms covers reference (Kitchen project covers feed)
+  // SevenRooms covers SERVED — live from the Kitchen edge function (actual COMPLETE
+  // bookings, split by venue: PIEMONTE = Restaurant, everything else = Scala Lounge).
+  // Fetched non-blocking so the modal opens immediately; clRecalc re-runs when it lands.
   C.srCovers=null;
-  try{ var cv=await sbKitchen.from('covers').select('day_covers,night_covers').eq('service_date',ds).limit(1); if(!cv.error&&cv.data&&cv.data.length) C.srCovers=cv.data[0]; }catch(e){}
+  (function(){ var d=ds;
+    fetch(KITCHEN_URL+'/functions/v1/sevenrooms-sync?covers_actual='+d,{
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+KITCHEN_KEY,'x-proxy-secret':'Kitchen'}
+    }).then(function(r){return r.json();}).then(function(sd){
+      if(sd&&sd.ok&&typeof sd.covers==='number'){
+        C.srCovers={restaurant:Number(sd.restaurant_covers)||0, lounge:Number(sd.lounge_covers)||0, total:Number(sd.covers)||0};
+        clRecalc();
+      }
+    }).catch(function(){});
+  })();
   // Manager(s) on duty — from the schedule (foh_staff Management + foh_roster working)
   C.onDuty=[];
   try{
@@ -4935,8 +4946,11 @@ function clRecalc(){
   if(g('cl-comps-tot')) g('cl-comps-tot').innerHTML= clInit().comps.length?('Comps total <b>'+revMoney(ct)+'</b>'+(tot?' · '+(ct/tot*100).toFixed(1)+'% of net':'')):'';
   var sr=clInit().srCovers;
   if(g('cl-sr-covers')){
-    if(sr){ var srTot=(Number(sr.day_covers)||0)+(Number(sr.night_covers)||0);
-      g('cl-sr-covers').innerHTML='SevenRooms — dinner <b>'+(Number(sr.night_covers)||0)+'</b>'+((Number(sr.day_covers)||0)?(' · lunch <b>'+sr.day_covers+'</b>'):'')+' covers · you entered '+totCov+(srTot?(totCov===srTot?' <b style="color:#2d7a4f">✓ matches</b>':' <span style="color:#b3402f">('+(totCov-srTot>=0?'+':'')+(totCov-srTot)+' vs SevenRooms)</span>'):'');
+    if(sr){
+      var cmp=function(entered,actual){ if(!entered) return ''; if(entered===actual) return ' <b style="color:#2d7a4f">✓</b>'; var df=entered-actual; return ' <span style="color:#b3402f">('+(df>=0?'+':'')+df+')</span>'; };
+      g('cl-sr-covers').innerHTML='SevenRooms served &mdash; Restaurant <b>'+sr.restaurant+'</b>'+cmp(restCov,sr.restaurant)
+        +' &middot; Scala <b>'+sr.lounge+'</b>'+cmp(lounCov,sr.lounge)
+        +' &middot; total <b>'+sr.total+'</b>'+cmp(totCov,sr.total);
     } else g('cl-sr-covers').textContent='';
   }
 }
@@ -4978,7 +4992,7 @@ function clEmailHTML(c, ds){
   var restNet=rln+rdn,restCov=rlc+rdc,lounNet=lln+ldn,lounCov=llc+ldc,net=restNet+lounNet,totCov=restCov+lounCov;
   function avg(x,cov){ return cov?('AED '+Math.round(x/cov).toLocaleString()):'—'; }
   var sr=clInit().srCovers,srLine='';
-  if(sr){ var srTot=n(sr.day_covers)+n(sr.night_covers); srLine='SevenRooms — dinner <b>'+n(sr.night_covers)+'</b>'+(n(sr.day_covers)?(' · lunch <b>'+n(sr.day_covers)+'</b>'):'')+' covers · entered '+totCov+(srTot===totCov?' &check;':''); }
+  if(sr){ srLine='SevenRooms served — Restaurant <b>'+n(sr.restaurant)+'</b> · Scala <b>'+n(sr.lounge)+'</b> · total <b>'+n(sr.total)+'</b> covers'+(n(sr.total)===totCov?' &check;':' · entered '+totCov); }
   var tips=n(c.cc_tips)+n(c.cash_tips), comps=c.comps||[], compsTot=comps.reduce(function(s,x){return s+n(x.amount);},0);
   var dateLabel=new Date(ds+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   var sh=c.shifts||{}, good=c.comments_good||[], bad=c.comments_bad||[];
