@@ -4541,6 +4541,7 @@ function revBriefing(){
   var T=(R.targets&&R.targets[p])||0;
   if(T>0){ var reqRem=T-rv.mtd, upl=rv.projected?(reqRem/rv.projected-1):null;
     L.push('  Target '+Math.round(T)+'. Forecast vs target: '+Math.round(rv.forecast-T)+' ('+revPct(T?(rv.forecast-T)/T:0)+'). To hit target, the remaining days must deliver '+Math.round(reqRem)+' vs projected '+Math.round(rv.projected)+(upl!=null?' = a '+(upl>=0?'+':'')+(upl*100).toFixed(1)+'% uplift on the current run-rate':'')+'.'); }
+  var od=revOpsDigest(); if(od) L.push(od);
   return L.join('\n');
 }
 // The ONLY tool the analyst can call. It never does arithmetic itself — it parameterises
@@ -4603,7 +4604,7 @@ async function revAiReport(){
 //  AI CHAT / REPORTS — full-screen module. Multi-turn, quick-report chips,
 //  same deterministic engine (the model never computes; it parameterises + narrates).
 // ══════════════════════════════════════════════
-var REV_CHAT_SYS='You are a precise F&B revenue analyst for Roberto\'s DIFC. Use ONLY the figures in the DATA block or returned by the compute_scenario tool — never invent or calculate numbers yourself. For ANY what-if about changing average spend or covers you MUST call compute_scenario; the tool result already contains every derived figure (deltas, gap_to_target, percentages) — quote them verbatim, do NOT do arithmetic. When F&B figures are marked "est", say they are estimates from the standard mix, not actuals. Be a clear, board-ready analyst: use short headings, tables and bullets; lead with the answer; call out risks and notable swings. Keep follow-ups in context.';
+var REV_CHAT_SYS='You are a precise F&B revenue analyst for Roberto\'s DIFC. Use ONLY the figures in the DATA block or returned by the compute_scenario tool — never invent or calculate numbers yourself. For ANY what-if about changing average spend or covers you MUST call compute_scenario; the tool result already contains every derived figure (deltas, gap_to_target, percentages) — quote them verbatim, do NOT do arithmetic. When F&B figures are marked "est", say they are estimates from the standard mix, not actuals. An OPERATIONS LOG (closing reports) may be provided — when asked about patterns/themes, mine it for recurring shift challenges, comps trends, and comment themes, and quantify how often each recurs. Be a clear, board-ready analyst: use short headings, tables and bullets; lead with the answer; call out risks and notable swings. Keep follow-ups in context.';
 function revChatInit(){ var R=revInit(); if(!R.chat) R.chat={thread:[], api:[], busy:false}; return R.chat; }
 function revChatOpen(){ revChatInit(); document.getElementById('rev-chat-modal').style.display='flex'; revChatRender(); var inp=document.getElementById('rev-chat-input'); if(inp) setTimeout(function(){inp.focus();},60); }
 function revChatClose(){ document.getElementById('rev-chat-modal').style.display='none'; }
@@ -4616,7 +4617,8 @@ function revChatChip(type){
     board:'Give me a board-ready summary of '+ml+': performance vs last month, full-month forecast vs budget, and the key risks.',
     whatif:'What happens to the budget and forecast for '+ml+' if average spend rises 2%? Does it close the gap to target?',
     day:'Give me the full breakdown — net, Restaurant vs Scala, daypart, covers, average spend and F&B — for the most recent trading day.',
-    gap:'How far is '+ml+' from the target, and what uplift in the remaining days would be needed to close the gap?'
+    gap:'How far is '+ml+' from the target, and what uplift in the remaining days would be needed to close the gap?',
+    patterns:'Looking across the closing reports (the OPERATIONS LOG), what recurring patterns, issues and themes come up — in shift challenges, comps, and the good/bad comments? Summarise the top themes, how often each appears, and any link to weak nights.'
   }[type];
   if(q) revChatSend(q);
 }
@@ -4624,6 +4626,7 @@ async function revChatSend(text){
   var c=revChatInit(); if(c.busy) return;
   c.thread.push({role:'user', text:text}); c.api.push({role:'user', content:text});
   c.busy=true; revChatRender();
+  if(!revInit().closingsLoaded) await clLoadHistory();
   var SYS=REV_CHAT_SYS+'\n\nDATA:\n'+revBriefing();
   var cardsHTML='';
   try{
@@ -4838,6 +4841,34 @@ async function clEmail(crow, ds){
     if(!resp.ok) return {ok:false, msg:data.error||('HTTP '+resp.status)};
     return {ok:true};
   }catch(e){ return {ok:false, msg:String(e)}; }
+}
+// Load recent closing-report operational history (for the Analyst's pattern-reading).
+async function clLoadHistory(){
+  var R=revInit(); if(R.closingsLoaded) return; R.closingsLoaded=true;
+  try{
+    var res=await sb.from('closing_reports').select('service_date,manager_am,manager_pm,comps,shifts,comments_good,comments_bad,support,private_events').order('service_date',{ascending:false}).limit(60);
+    R.closings = res.error ? [] : (res.data||[]);
+  }catch(e){ R.closings=[]; }
+}
+// Compact text digest of the operations log → appended to the Analyst briefing.
+function revOpsDigest(){
+  var cl=revInit().closings||[]; if(!cl.length) return '';
+  var L=['\nOPERATIONS LOG (closing reports, newest first — use to spot recurring patterns/themes across nights):'];
+  cl.slice(0,30).forEach(function(c){
+    var ds=String(c.service_date).slice(0,10), sh=c.shifts||{}, ch=[];
+    ['day','night','late'].forEach(function(k){ if((sh[k]||{}).challenges) ch.push(k+': '+sh[k].challenges); });
+    var comps=c.comps||[], compTot=comps.reduce(function(s,x){return s+(Number(x.amount)||0);},0);
+    var parts=[ds+' ('+revWeekday(ds).slice(0,3)+')'];
+    var mgr=[c.manager_am,c.manager_pm].filter(Boolean).join('/'); if(mgr) parts.push('mgr '+mgr);
+    if(comps.length) parts.push('comps '+comps.length+' (AED '+Math.round(compTot)+')');
+    if(ch.length) parts.push('challenges — '+ch.join('; '));
+    if((c.comments_good||[]).length) parts.push('good: '+c.comments_good.join('; '));
+    if((c.comments_bad||[]).length) parts.push('bad: '+c.comments_bad.join('; '));
+    if(c.support) parts.push('support: '+c.support);
+    if(c.private_events) parts.push('events: '+c.private_events);
+    L.push('  '+parts.join(' | '));
+  });
+  return L.join('\n');
 }
 async function clSave(andEmail){
   var C=clInit(), ds=clVal('cl-date')||C.date;
@@ -6459,6 +6490,7 @@ function fohSignOut(){
       <button class="rev-chat-chip" onclick="revChatChip('whatif')">&#128256; What-if (+2% spend)</button>
       <button class="rev-chat-chip" onclick="revChatChip('day')">&#128197; Latest day</button>
       <button class="rev-chat-chip" onclick="revChatChip('gap')">&#127919; Gap to target</button>
+      <button class="rev-chat-chip" onclick="revChatChip('patterns')">&#128257; Patterns</button>
     </div>
     <div class="rev-chat-inputbar">
       <textarea id="rev-chat-input" class="rev-chat-input" rows="1" placeholder="Ask anything about your revenue&hellip;" onkeydown="revChatKey(event)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
