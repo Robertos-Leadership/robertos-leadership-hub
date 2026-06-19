@@ -5332,6 +5332,14 @@ const FOH_SECTIONS = [
   { key: 'Cashiers',       label: 'Cashiers' },
 ];
 
+// Department band colours for the PRINTED roster — strong, distinct, readable with white text.
+const FOH_SECTION_PRINT_COLOR = {
+  'Management':'#410207', 'Restaurant':'#1d4ed8', 'Head Waiter':'#047857',
+  'Waiter/Waitress':'#b45309', 'Runners':'#0f766e', 'Bar':'#6d28d9',
+  'Hostess Desk':'#be185d', 'Security':'#374151', 'Housekeeping':'#c2410c',
+  'Cashiers':'#4d7c0f',
+};
+
 const FOH_STATUS_META = {
   working: { label: '',    bg: 'working' },
   off:     { label: 'OFF', bg: 'off' },
@@ -6127,11 +6135,12 @@ function fohSchedPrint(){
   FOH_SECTIONS.forEach(function(sec){
     var stStaff=fohSchedStaff.filter(function(s){ return s.section===sec.key; });
     if(!stStaff.length) return;
-    html+='<tr><td colspan="11" style="background:#f5f5f5;font-weight:700;font-size:8px;letter-spacing:1px;text-transform:uppercase;padding:4px 6px">'+sec.label+'</td></tr>';
+    var secColor = FOH_SECTION_PRINT_COLOR[sec.key] || '#410207';
+    html+='<tr><td colspan="11" style="background:'+secColor+';color:#fff;font-weight:800;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;padding:7px 9px;border:1px solid '+secColor+'">'+sec.label+'</td></tr>';
     stStaff.forEach(function(staff){
       var wh=0, wd=0;
-      html+='<tr><td style="padding:4px 6px;font-weight:600;border:1px solid #ccc">'+staff.name+'</td>'+
-        '<td style="padding:4px 4px;font-size:8px;color:#666;border:1px solid #ccc">'+staff.role+'</td>';
+      html+='<tr><td style="padding:5px 6px;font-weight:700;border:1px solid #ccc;border-left:4px solid '+secColor+'">'+staff.name+'</td>'+
+        '<td style="padding:5px 6px;font-size:11px;color:#1a1a1a;font-weight:700;border:1px solid #ccc">'+staff.role+'</td>';
       days.forEach(function(d){
         var ds=formatDate(d);
         var row=fohSchedRoster[fohSchedRosterKey(staff.id,ds)];
