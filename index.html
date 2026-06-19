@@ -2093,7 +2093,8 @@
     </div>
     <div style="display:flex;align-items:center">
       <div class="nav-tabs" id="nav-tabs"></div>
-      <button class="topbar-signout" onclick="showFohPublic()">&#8592; FOH</button>
+      <button class="topbar-signout" onclick="showFohPublic()">&#8592; Home</button>
+      <button class="topbar-signout" onclick="showManagerLanding()">Manager</button>
       <button class="topbar-signout" onclick="openChangePassword()">Password</button>
       <button class="topbar-signout" onclick="fohSignOut()">Sign out</button>
     </div>
@@ -2352,10 +2353,13 @@ function renderNav(){
   const nav = document.getElementById('nav-tabs');
   if(!nav) return;
   const active = resolveTab(state.currentTab);
+  // Module-scoped nav: Revenue and Operations are single pages reached from the Manager
+  // landing — no cross-module links there. Only the Events module keeps its own sub-tabs.
+  if(active==='revenue' || active==='operations'){ nav.innerHTML=''; return; }
   const eventTabs = state.events.slice().sort(eventSort).map(ev=>
     `<div class="nav-tab ${active===eventTab(ev)?'active':''}" data-tab="${eventTab(ev)}" onclick="switchTab('${eventTab(ev)}')">${ev.name}</div>`
   ).join('');
-  nav.innerHTML = `<div class="nav-tab ${active==='dashboard'?'active':''}" data-tab="dashboard" onclick="switchTab('dashboard')">Leaders</div>${eventTabs}<div class="nav-tab ${active==='revenue'?'active':''}" data-tab="revenue" onclick="switchTab('revenue')">Revenue</div><div class="nav-tab ${active==='operations'?'active':''}" data-tab="operations" onclick="switchTab('operations')">Operations</div>`;
+  nav.innerHTML = `<div class="nav-tab ${active==='dashboard'?'active':''}" data-tab="dashboard" onclick="switchTab('dashboard')">Leaders</div>${eventTabs}`;
 }
 function stageStats(tasks, stage){
   const stageTasks = tasks.filter(t=>getStage(t)===stage);
