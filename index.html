@@ -2057,7 +2057,7 @@
     <div class="foh-hero-content">
       <img class="foh-hero-logo" src="robertos-logo-white.svg" alt="Roberto's">
     </div>
-    <div id="foh-build" style="position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4);z-index:3;font-variant-numeric:tabular-nums;">build 2026-06-20.2</div>
+    <div id="foh-build" style="position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4);z-index:3;font-variant-numeric:tabular-nums;">build 2026-06-20.3</div>
   </div>
 
   <!-- main scroll area -->
@@ -5983,7 +5983,7 @@ async function fohSchedDeleteWeek(){
   });
   fohRenderSchedView();
   var res=await sb.from('foh_roster').delete().gte('work_date',from).lte('work_date',to);
-  if(res.error){ console.error('Delete week error:',res.error); fohLoadSchedData().then(fohRenderSchedView); }
+  if(res.error){ console.error('Delete week error:',res.error); toast('Could not delete the week — restoring.', true); fohLoadSchedData().then(fohRenderSchedView); }
 }
 
 async function fohSchedConfirmDuplicate(){
@@ -6499,12 +6499,23 @@ async function chkLoad(){
 }
 function chkSetType(t){ var C=chkInit(); if(C.type===t) return; C.type=t; chkLoad(); chkSubscribe(); }
 async function chkToggle(i){
-  var C=chkInit(); var checked=Object.assign({}, (C.row&&C.row.checked)||{});
+  var C=chkInit();
+  var hadRow=!!C.row;
+  var prevChecked=Object.assign({}, (C.row&&C.row.checked)||{});
+  var checked=Object.assign({}, prevChecked);
   if(checked[i]) delete checked[i]; else checked[i]=true;
   if(!C.row) C.row={check_date:C.date, shift_type:C.type, area:'Restaurant', checked:checked}; else C.row.checked=checked;
   chkRenderItems();
   var res=await sb.from('foh_checklists').upsert({check_date:C.date, shift_type:C.type, area:'Restaurant', checked:checked, updated_at:new Date().toISOString()},{onConflict:'check_date,shift_type,area'});
-  if(res.error){ console.error('chk save',res.error); if(res.error.code==='PGRST205'||res.error.code==='PGRST204'){ alert('Run foh-checklists-schema.sql in Supabase first.'); } }
+  if(res.error){
+    console.error('chk save',res.error);
+    // Revert the optimistic tick so the checklist matches the server — a failed
+    // upsert (RLS/network) used to leave the box ticked though nothing saved.
+    if(hadRow){ C.row.checked=prevChecked; } else { C.row=null; }
+    chkRenderItems();
+    if(res.error.code==='PGRST205'||res.error.code==='PGRST204'){ alert('Run foh-checklists-schema.sql in Supabase first.'); }
+    else { toast('Checklist not saved — check connection and tap again.', true); }
+  }
 }
 async function chkSign(){
   var C=chkInit(); var inp=document.getElementById('chk-empid'); var raw=(inp?inp.value:'').trim();
