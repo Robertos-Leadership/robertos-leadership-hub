@@ -2057,6 +2057,7 @@
     <div class="foh-hero-content">
       <img class="foh-hero-logo" src="robertos-logo-white.svg" alt="Roberto's">
     </div>
+    <div id="foh-build" style="position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4);z-index:3;font-variant-numeric:tabular-nums;">build 2026-06-20.1</div>
   </div>
 
   <!-- main scroll area -->
@@ -2580,16 +2581,28 @@ async function loadAll(){
 }
 
 // -- RENDER MAIN --
+var _lastRenderTab = null, _lastRenderHTML = null;
 function renderMain(){
   const el = document.getElementById('main-content');
   const sec = document.getElementById('topbar-section');
-  if(sec) sec.textContent = state.currentTab==='revenue' ? 'Revenue' : (state.currentTab==='operations' ? 'Operations' : (state.currentTab==='dashboard' ? 'Leaders' : 'Events'));
-  if(state.currentTab==='revenue'){ el.innerHTML = renderRevenue(); return; }
-  if(state.currentTab==='operations'){ el.innerHTML = renderOperations(); return; }
-  if(state.events.length===0){ el.innerHTML='<div class="loading">Loading...</div>'; return; }
-  if(state.currentTab==='dashboard') el.innerHTML = renderDashboard();
-  else el.innerHTML = renderEventPage(state.events.find(e=>e.id===tabEventId(state.currentTab)));
-  attachEventListeners();
+  const tab = state.currentTab;
+  if(sec) sec.textContent = tab==='revenue' ? 'Revenue' : (tab==='operations' ? 'Operations' : (tab==='dashboard' ? 'Leaders' : 'Events'));
+  // Build the HTML first, then only touch the DOM if it actually changed.
+  // The realtime path reloads all tables and re-renders on ANY change from ANY
+  // screen — most of which don't affect the current view. Skipping an identical
+  // rewrite avoids the reflow, the scroll-jump/flicker on the always-on wall
+  // screens, and needless listener re-attachment. renderMain is the sole writer
+  // of #main-content, so the cached string always matches what's on screen.
+  let html, needsListeners = false;
+  if(tab==='revenue'){ html = renderRevenue(); }
+  else if(tab==='operations'){ html = renderOperations(); }
+  else if(state.events.length===0){ html = '<div class="loading">Loading...</div>'; }
+  else if(tab==='dashboard'){ html = renderDashboard(); needsListeners = true; }
+  else { html = renderEventPage(state.events.find(e=>e.id===tabEventId(tab))); needsListeners = true; }
+  if(tab===_lastRenderTab && html===_lastRenderHTML) return;
+  _lastRenderTab = tab; _lastRenderHTML = html;
+  el.innerHTML = html;
+  if(needsListeners) attachEventListeners();
 }
 
 // -- DASHBOARD --
@@ -4889,16 +4902,23 @@ async function clOpen(ds){
   // SevenRooms covers SERVED — live from the Kitchen edge function (actual COMPLETE
   // bookings, split by venue: PIEMONTE = Restaurant, everything else = Scala Lounge).
   // Fetched non-blocking so the modal opens immediately; clRecalc re-runs when it lands.
-  C.srCovers=null;
+  C.srCovers=null; C.srCoversError=false;
   (function(){ var d=ds;
     fetch(KITCHEN_URL+'/functions/v1/sevenrooms-sync?covers_actual='+d,{
       method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+KITCHEN_KEY,'x-proxy-secret':'Kitchen'}
-    }).then(function(r){return r.json();}).then(function(sd){
+    }).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(sd){
       if(sd&&sd.ok&&typeof sd.covers==='number'){
         C.srCovers={restaurant:Number(sd.restaurant_covers)||0, lounge:Number(sd.lounge_covers)||0, total:Number(sd.covers)||0};
-        clRecalc();
+      } else {
+        C.srCoversError=true;   // reached the server but it didn't return usable covers
       }
-    }).catch(function(){});
+      clRecalc();
+    }).catch(function(e){
+      // Network/HTTP/parse failure — surface it so a manager knows the sync broke
+      // (vs. genuinely zero covers), rather than seeing a blank line.
+      console.warn('[closing] SevenRooms covers fetch failed', e);
+      C.srCoversError=true; clRecalc();
+    });
   })();
   // Manager(s) on duty — from the schedule (foh_staff Management + foh_roster working)
   C.onDuty=[];
@@ -4967,6 +4987,8 @@ function clRecalc(){
       g('cl-sr-covers').innerHTML='SevenRooms served &mdash; Restaurant <b>'+sr.restaurant+'</b>'+cmp(restCov,sr.restaurant)
         +' &middot; Scala <b>'+sr.lounge+'</b>'+cmp(lounCov,sr.lounge)
         +' &middot; total <b>'+sr.total+'</b>'+cmp(totCov,sr.total);
+    } else if(clInit().srCoversError){
+      g('cl-sr-covers').innerHTML='<span style="color:#b3402f">SevenRooms covers couldn’t load &mdash; enter and verify covers manually.</span>';
     } else g('cl-sr-covers').textContent='';
   }
 }
@@ -5091,6 +5113,20 @@ async function clSave(andEmail){
     comps:comps, shifts:shifts, private_events:clVal('cl-events')||null,
     comments_good:good, comments_bad:bad, support:clVal('cl-support')||null,
     created_by:(state.userEmail||null), updated_at:new Date().toISOString() };
+  // Guard: revenue entered without covers would silently inflate spend-per-cover
+  // on the board's MTD averages (net ÷ understated covers). Require covers for
+  // any daypart that has a net figure.
+  var coverChecks=[
+    {net:rl,cov:rlc,label:'Restaurant lunch'},
+    {net:rd,cov:rdc,label:'Restaurant dinner'},
+    {net:ll,cov:llc,label:'Lounge lunch'},
+    {net:ld,cov:ldc,label:'Lounge dinner'}
+  ];
+  var missingCovers=coverChecks.filter(function(c){ return c.net!=null && c.net!==0 && !(c.cov>0); }).map(function(c){ return c.label; });
+  if(missingCovers.length){
+    alert('Please add covers for: '+missingCovers.join(', ')+'.\n\nRevenue without covers makes the average-spend numbers wrong on the Revenue dashboard.');
+    return;
+  }
   var btns=[document.getElementById('cl-save'),document.getElementById('cl-save-email')];
   function setBusy(t){ btns.forEach(function(b){ if(b){ b.disabled=!!t; } }); var se=document.getElementById('cl-save-email'); if(se) se.textContent=t?(andEmail?'Saving & emailing…':'Saving…'):'Save & Email'; }
   setBusy(true);
@@ -5103,15 +5139,27 @@ async function clSave(andEmail){
     rest_net:restNet, rest_covers_actual:restCov, lounge_net:lounNet, lounge_covers_actual:lounCov,
     food_net:food, bev_net:bev, tobacco_net:tob, net_actual:net, updated_at:new Date().toISOString() };
   var res2=await sb.from('rev_daily').upsert(revRow,{onConflict:'service_date'});
-  var R=revInit(); var idx=R.daily.findIndex(function(x){return String(x.service_date).slice(0,10)===ds;});
-  if(idx>=0) R.daily[idx]=Object.assign({},R.daily[idx],revRow); else R.daily.push(revRow);
+  var R=revInit();
+  // Only mirror into the local cache when the DB write actually succeeded —
+  // otherwise the Revenue view would show numbers that aren't in the database,
+  // leaving a silent hole in MTD that only surfaces on the next reload.
+  if(!res2.error){
+    var idx=R.daily.findIndex(function(x){return String(x.service_date).slice(0,10)===ds;});
+    if(idx>=0) R.daily[idx]=Object.assign({},R.daily[idx],revRow); else R.daily.push(revRow);
+  }
   var emailMsg='';
   if(andEmail){ var em=await clEmail(crow, ds); emailMsg = em.ok ? ' · emailed to the team' : ('\n\n⚠️ Email NOT sent: '+em.msg+'\n(Deploy send-closing-report + set RESEND_API_KEY.)'); }
   setBusy(false);
+  if(res2.error){
+    // Closing report itself saved (source of truth), but the revenue rollup did
+    // not. Keep the form open so the manager can fix and re-save without re-typing.
+    alert('⚠️ Closing report saved, but the REVENUE ROLLUP FAILED — revenue numbers were NOT updated.\n\n'+res2.error.message+'\n\nFix the issue and tap Save again to update Revenue.'+emailMsg);
+    return;
+  }
   clClose();
   revInit().opsRecentLoaded=false;
   if(state.currentTab==='revenue'||state.currentTab==='operations') renderMain();
-  alert('Closing report saved'+(res2.error?(' — but revenue rollup failed: '+res2.error.message):' · revenue updated.')+emailMsg);
+  alert('Closing report saved · revenue updated.'+emailMsg);
 }
 
 // ── Operations page (hosts the Closing Report + recent-report history) ──
@@ -5538,8 +5586,8 @@ async function fohLoadSchedData(){
   var weekFrom = formatDate(addDays(fohSchedWeekStart, -7));
   var res = await Promise.all([
     sb.from('foh_staff').select('*').eq('active', true).order('sort_order'),
-    sb.from('foh_roster').select('*').gte('work_date', weekFrom).lte('work_date', weekEnd),
-    sb.from('foh_events').select('*').gte('event_date', weekFrom).lte('event_date', weekEnd)
+    sb.from('foh_roster').select('*').gte('work_date', weekFrom).lte('work_date', weekEnd).limit(5000),
+    sb.from('foh_events').select('*').gte('event_date', weekFrom).lte('event_date', weekEnd).limit(2000)
   ]);
   fohSchedStaff = res[0].data || [];
   fohSchedRoster = {};
@@ -6612,6 +6660,10 @@ function closeFohSchedule(){
   // Re-activate schedule nav button
   document.querySelectorAll('.foh-nav-btn').forEach(function(b){ b.classList.remove('active'); });
   document.getElementById('fnav-schedule').classList.add('active');
+  // Stop background work so it doesn't accumulate across an all-day session
+  if(window.fohAttTimer){ clearInterval(window.fohAttTimer); window.fohAttTimer = null; }
+  if(fohSchedEvRTTimer){ clearTimeout(fohSchedEvRTTimer); fohSchedEvRTTimer = null; }
+  if(fohSchedRTChannel){ try{ sb.removeChannel(fohSchedRTChannel); }catch(e){} fohSchedRTChannel = null; }
 }
 
 // ── TAB SWITCHING ──
