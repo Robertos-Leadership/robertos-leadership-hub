@@ -2093,7 +2093,7 @@ if ('serviceWorker' in navigator) {
     <div class="foh-hero-content">
       <img class="foh-hero-logo" src="robertos-logo-white.svg" alt="Roberto's">
     </div>
-    <div id="foh-build" style="position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4);z-index:3;font-variant-numeric:tabular-nums;">build 2026-06-22.6</div>
+    <div id="foh-build" style="position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4);z-index:3;font-variant-numeric:tabular-nums;">build 2026-06-22.7</div>
   </div>
 
   <!-- main scroll area -->
@@ -5879,7 +5879,18 @@ async function openChecklists(){
 }
 async function chkLoadVerifiers(){
   var C=chkInit(); if(C.verifiers) return;
-  try{ var res=await sb.from('foh_staff').select('name,role,section,emp_id').eq('active',true).in('section',['Management','Head Waiter']); C.verifiers=(res.data||[]).filter(function(s){return s.emp_id;}); }catch(e){ C.verifiers=[]; }
+  // Who may sign off the checklist: Management, Head Waiter, and Supervisors.
+  // "Supervisor" is a ROLE (e.g. "Restaurant Supervisor"), not a section, so we
+  // fetch active staff and match on section OR role (future-proof for any new
+  // supervisor title). ~28 rows — cheap to filter client-side.
+  try{
+    var res=await sb.from('foh_staff').select('name,role,section,emp_id').eq('active',true);
+    C.verifiers=(res.data||[]).filter(function(s){
+      if(!s.emp_id) return false;
+      var sec=String(s.section||''), role=String(s.role||'');
+      return sec==='Management' || sec==='Head Waiter' || /supervisor/i.test(role) || /supervisor/i.test(sec);
+    });
+  }catch(e){ C.verifiers=[]; }
 }
 async function chkLoad(){
   var C=chkInit();
@@ -5942,7 +5953,7 @@ function chkRender(){
   if(C.row && C.row.verified_name){
     so.innerHTML='<div class="chk-signed">&#10003; Verified by <b>'+chkEsc(C.row.verified_name)+'</b> ('+chkEsc(C.row.verified_role||'')+(C.row.verified_emp_id?' &middot; ID '+chkEsc(C.row.verified_emp_id):'')+')<br><span>'+(C.row.verified_at?new Date(C.row.verified_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'</span><div class="chk-resign" onclick="chkResign()">Re-sign</div></div>';
   } else if(!document.getElementById('chk-empid')){
-    so.innerHTML='<div class="chk-sign-lbl">Manager on duty / Head Waiter — sign off</div><div class="chk-sign-row"><input id="chk-empid" inputmode="numeric" placeholder="Employee ID" class="chk-empid"><button class="chk-sign-btn" onclick="chkSign()">Sign off</button></div><div id="chk-sign-err" class="chk-sign-err"></div>';
+    so.innerHTML='<div class="chk-sign-lbl">Manager / Head Waiter / Supervisor — sign off</div><div class="chk-sign-row"><input id="chk-empid" inputmode="numeric" placeholder="Employee ID" class="chk-empid"><button class="chk-sign-btn" onclick="chkSign()">Sign off</button></div><div id="chk-sign-err" class="chk-sign-err"></div>';
   }
 }
 function chkResign(){ var C=chkInit(); if(C.row){ C.row=Object.assign({},C.row,{verified_name:null}); } chkRender(); }
