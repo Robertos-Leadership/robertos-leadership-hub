@@ -5499,13 +5499,35 @@ function fohSubscribeSchedRealtime(){
       var k=fohSchedRosterKey(r.staff_id,workDate);
       if(payload.eventType==='DELETE') delete fohSchedRoster[k];
       else fohSchedRoster[k]=Object.assign({},payload.new,{work_date:workDate});
-      fohRenderSchedView();
+      fohSchedRealtimeRerender();
     })
     .on('postgres_changes',{event:'*',schema:'public',table:'foh_events'},function(){
       // Events change in slots; reload the visible range and re-render (debounced)
       if(fohSchedEvRTTimer) clearTimeout(fohSchedEvRTTimer);
-      fohSchedEvRTTimer=setTimeout(function(){ fohReloadEvents().then(fohRenderSchedView); },200);
+      fohSchedEvRTTimer=setTimeout(function(){ fohReloadEvents().then(fohSchedRealtimeRerender); },200);
     }).subscribe();
+}
+
+// Defer the schedule rebuild while a manager is mid-typing in an inline panel
+// (new-staff name/role, or the move-station select) so a teammate's roster/event
+// change doesn't wipe their entry. State is already updated; only the visual
+// rebuild waits. Mirrors the Kitchen scheduler + the hub's safeToRefresh().
+var fohSchedRerenderTimer=null;
+function fohSchedSafeToRerender(){
+  var ae=document.activeElement;
+  if(ae && (ae.tagName==='INPUT'||ae.tagName==='SELECT')){
+    var wv=document.getElementById('foh-sch-week-view');
+    var dv=document.getElementById('foh-sch-day-view');
+    if((wv && wv.contains(ae)) || (dv && dv.contains(ae))) return false;
+  }
+  return true;
+}
+function fohSchedRealtimeRerender(){
+  clearTimeout(fohSchedRerenderTimer);
+  fohSchedRerenderTimer=setTimeout(function(){
+    if(!fohSchedSafeToRerender()){ fohSchedRealtimeRerender(); return; }  // retry once idle
+    fohRenderSchedView();
+  },250);
 }
 let fohSchedEvRTTimer=null;
 async function fohReloadEvents(){
