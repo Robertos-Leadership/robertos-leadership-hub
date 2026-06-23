@@ -2187,6 +2187,12 @@ if ('serviceWorker' in navigator) {
         <div class="module-desc">Daily budget, covers, spend &amp; month-vs-month review.</div>
         <div class="module-badge">Open</div>
       </div>
+      <div class="module-card" onclick="enterApp('stocktake')">
+        <div class="module-tag">Live</div>
+        <div class="module-name">Stock Take</div>
+        <div class="module-desc">Monthly beverage &amp; tobacco inventory count.</div>
+        <div class="module-badge">Open</div>
+      </div>
     </div>
     <div class="landing-signout">
       <span onclick="openChangePassword()" style="cursor:pointer">Change password</span>
@@ -2469,7 +2475,7 @@ function renderNav(){
   const active = resolveTab(state.currentTab);
   // Module-scoped nav: Revenue and Operations are single pages reached from the Manager
   // landing — no cross-module links there. Only the Events module keeps its own sub-tabs.
-  if(active==='revenue' || active==='operations'){ nav.innerHTML=''; return; }
+  if(active==='revenue' || active==='operations' || active==='stocktake'){ nav.innerHTML=''; return; }
   const eventTabs = state.events.slice().sort(eventSort).map(ev=>
     `<div class="nav-tab ${active===eventTab(ev)?'active':''}" data-tab="${eventTab(ev)}" onclick="switchTab('${eventTab(ev)}')">${ev.name}</div>`
   ).join('');
@@ -2510,7 +2516,7 @@ function enterApp(module){
   // Land in the chosen module — Revenue/Operations go straight there; Events keeps the
   // current Events-family tab (Leaders or an event) but NEVER another module's tab.
   var cur=state.currentTab;
-  var target=(module==='revenue'||module==='operations') ? module
+  var target=(module==='revenue'||module==='operations'||module==='stocktake') ? module
     : ((cur==='dashboard' || (cur && cur.indexOf('event_')===0)) ? cur : 'dashboard');
   switchTab(target);
 }
@@ -2623,7 +2629,7 @@ function renderMain(){
   const el = document.getElementById('main-content');
   const sec = document.getElementById('topbar-section');
   const tab = state.currentTab;
-  if(sec) sec.textContent = tab==='revenue' ? 'Revenue' : (tab==='operations' ? 'Operations' : (tab==='dashboard' ? 'Leaders' : 'Events'));
+  if(sec) sec.textContent = tab==='revenue' ? 'Revenue' : (tab==='operations' ? 'Operations' : (tab==='stocktake' ? 'Stock Take' : (tab==='dashboard' ? 'Leaders' : 'Events')));
   // Build the HTML first, then only touch the DOM if it actually changed.
   // The realtime path reloads all tables and re-renders on ANY change from ANY
   // screen — most of which don't affect the current view. Skipping an identical
@@ -2633,6 +2639,7 @@ function renderMain(){
   let html, needsListeners = false;
   if(tab==='revenue'){ html = renderRevenue(); }
   else if(tab==='operations'){ html = renderOperations(); }
+  else if(tab==='stocktake'){ html = renderStockTake(); }
   else if(state.events.length===0){ html = '<div class="loading">Loading...</div>'; }
   else if(tab==='dashboard'){ html = renderDashboard(); needsListeners = true; }
   else { html = renderEventPage(state.events.find(e=>e.id===tabEventId(tab))); needsListeners = true; }
@@ -6045,6 +6052,7 @@ async function chkShowHistory(){
 <script src="foh-revenue.js?v=2026-06-22.5"></script>
 <script src="foh-closing.js?v=2026-06-22.1"></script>
 <script src="foh-ops.js?v=2026-06-22.4"></script>
+<script src="stock-take.js?v=2026-06-23.1"></script>
 
 <!-- FOH Schedule: PIN modal -->
 <div id="foh-sch-pin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center" onclick="fohSchedClosePin(event)">
