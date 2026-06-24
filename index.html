@@ -2181,7 +2181,7 @@ if ('serviceWorker' in navigator) {
         <div class="module-desc">Daily closing report — revenue, tips, comps &amp; shift notes.</div>
         <div class="module-badge">Open</div>
       </div>
-      <div class="module-card" onclick="enterApp('revenue')">
+      <div class="module-card" id="mod-card-revenue" onclick="enterApp('revenue')">
         <div class="module-tag">Live</div>
         <div class="module-name">Revenue</div>
         <div class="module-desc">Daily budget, covers, spend &amp; month-vs-month review.</div>
@@ -2499,7 +2499,19 @@ function currentStageForTasks(tasks){
 }
 
 // -- NAVIGATION --
+// ── Per-user module access (beta: client-side gate; proper roles come later) ──
+// email -> modules the user may NOT open. Anyone not listed sees everything.
+var FOH_BLOCKED_MODULES = { 'jballout@robertos.ae': ['revenue'] };
+function fohBlocked(module){
+  var e=(state.userEmail||'').toLowerCase();
+  return (FOH_BLOCKED_MODULES[e]||[]).indexOf(module)!==-1;
+}
+function applyFohAccess(){
+  var rev=document.getElementById('mod-card-revenue');
+  if(rev) rev.style.display = fohBlocked('revenue') ? 'none' : '';
+}
 function enterApp(module){
+  if(fohBlocked(module)){ showManagerLanding(); return; }   // access gate
   document.getElementById('landing').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   try{ localStorage.setItem('rl_inapp','1'); }catch(e){}
@@ -2526,9 +2538,12 @@ function showLanding(){
   document.getElementById('foh-public').style.display = 'none';
   document.getElementById('foh-nav').style.display = 'none';
   try{ localStorage.removeItem('rl_inapp'); }catch(e){}
+  applyFohAccess();
 }
 function switchTab(tab){
-  state.currentTab = resolveTab(tab);
+  var rt = resolveTab(tab);
+  if(fohBlocked(rt)) rt = 'dashboard';   // access gate
+  state.currentTab = rt;
   try{ localStorage.setItem('rl_tab', state.currentTab); }catch(e){}
   renderNav();
   renderMain();
@@ -5838,6 +5853,7 @@ function showManagerLanding(){
   document.getElementById('landing').style.display = 'grid';
   document.getElementById('app').style.display = 'none';
   document.getElementById('login').classList.remove('open');
+  applyFohAccess();
 }
 
 function fohSignOut(){

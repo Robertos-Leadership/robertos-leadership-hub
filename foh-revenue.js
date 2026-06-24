@@ -272,9 +272,9 @@ var REV_AI_URL='https://paoaivwtkzujmrgrfjuq.supabase.co/functions/v1/revenue-as
 var REV_FNB_MIX={food:0.48, bev:0.51, tob:0.01};
 function revFnbSplit(row){
   var net=Number(row.net_actual)||0;
-  if(row.food_net!=null||row.bev_net!=null||row.tobacco_net!=null)
-    return {food:Number(row.food_net||0), bev:Number(row.bev_net||0), tob:Number(row.tobacco_net||0), est:false};
-  return {food:Math.round(net*REV_FNB_MIX.food), bev:Math.round(net*REV_FNB_MIX.bev), tob:Math.round(net*REV_FNB_MIX.tob), est:true};
+  if(row.food_net!=null||row.bev_net!=null||row.tobacco_net!=null||row.other_net!=null)
+    return {food:Number(row.food_net||0), bev:Number(row.bev_net||0), tob:Number(row.tobacco_net||0), other:Number(row.other_net||0), est:false};
+  return {food:Math.round(net*REV_FNB_MIX.food), bev:Math.round(net*REV_FNB_MIX.bev), tob:Math.round(net*REV_FNB_MIX.tob), other:0, est:true};
 }
 // Comprehensive grounding: the FULL dataset (every entered day + F&B actual/estimate) plus
 // rates, budgets and the computed analysis — so the agent can answer about any day or metric.
@@ -285,6 +285,7 @@ function revBriefing(){
   L.push('ROBERTO\'S DIFC — REVENUE DATA (all figures AED). Currently viewing '+revMonthLabel(p)+'. Today (Dubai): '+todayStr+'.');
   L.push('Venues: Restaurant and Scala Lounge & Bar. Lunch is normally closed (dinner only).');
   L.push('F&B split: "actual" = entered from the DSR; "est" = estimated at Food '+(REV_FNB_MIX.food*100)+'% / Bev '+(REV_FNB_MIX.bev*100)+'% / Tobacco '+(REV_FNB_MIX.tob*100)+'% of net. Always label estimates as estimates.');
+  L.push('Sales categories sum to net: Food + Beverage + Tobacco + Other income. "Other" = non-F&B revenue (events/packages), shown only when present.');
   L.push('\nWEEKDAY RATES (daily budget pattern = cover_target × avg_spend):');
   ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].forEach(function(wd){ var r=R.rates[wd]; if(r) L.push('  '+wd+': avg_spend '+Number(r.avg_spend)+', cover_target '+Number(r.cover_target)+', daily budget '+(Number(r.cover_target)*Number(r.avg_spend))); });
   L.push('\nMONTHLY TARGETS / BUDGETS:');
@@ -296,7 +297,7 @@ function revBriefing(){
     var rc=(row.rest_covers_actual!=null?row.rest_covers_actual:'?'), lc=(row.lounge_covers_actual!=null?row.lounge_covers_actual:'?');
     L.push('  '+ds+' ('+wd.slice(0,3)+'): net '+Math.round(row.net_actual)
       +' | Restaurant '+Math.round(row.rest_net||0)+'/'+rc+'cov | Scala '+Math.round(row.lounge_net||0)+'/'+lc+'cov'
-      +' | F&B('+(f.est?'est':'actual')+') food '+f.food+' bev '+f.bev+' tob '+f.tob);
+      +' | F&B('+(f.est?'est':'actual')+') food '+f.food+' bev '+f.bev+' tob '+f.tob+(f.other?' other '+f.other:''));
   });
   var rv=revReview(p), m=revMonthData(p);
   L.push('\nANALYSIS — '+revMonthLabel(p)+' (through day '+rv.windowDay+'):');

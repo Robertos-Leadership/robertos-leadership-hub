@@ -29,7 +29,7 @@ var STOCK_EMAIL_CC = ['amohamed@robertos.ae','mpetrosino@robertos.ae','jballout@
 // employee/roster record (so the holder never appears on the FOH schedule). Used
 // by Francesco + shared with the cost controller as an admin code. Beta: security
 // deferred, so this lives client-side. Counts are attributed to this label.
-var STOCK_SUPER = { '1212': 'Stock Take Admin' };
+var STOCK_SUPER = { '1212': 'Stock Take Admin', '0000': 'Cost Controller' };
 
 // ── state ──
 var stDept    = 'beverage';  // current list (beverage | tobacco)
@@ -69,18 +69,43 @@ async function stLoadSheet(){
   stSheet = (res.data && res.data[0]) || null;
   stMonth = stSheet ? stSheet.month : null;
 }
+// Page through PostgREST's 1000-rows-per-request cap. WITHOUT this, a dept+month
+// with more than 1000 items (or counts) silently loads only the first 1000 — no
+// error — and the rest vanish from the totals, Excel and email. Each page rebuilds
+// the query (a range can't be reused across awaits); we stop on the first short
+// page. A stable secondary sort on id keeps pages from overlapping/skipping rows.
+async function stFetchAllPaged(makeQuery){
+  var out=[], from=0, PAGE=1000;
+  for(;;){
+    var res = await makeQuery().range(from, from+PAGE-1);
+    if(res && res.error) return { data:out, error:res.error };
+    var batch = (res && res.data) || [];
+    out = out.concat(batch);
+    if(batch.length < PAGE) break;
+    from += PAGE;
+  }
+  return { data:out, error:null };
+}
 async function stLoadItems(){
   if(!stMonth){ stItems = []; return; }
-  var res = await sb.from('stock_take_items').select('*')
-    .eq('venue_id',STOCK_VENUE).eq('dept',stDept).eq('month',stMonth)
-    .eq('active',true).order('sort_order');
+  var res = await stFetchAllPaged(function(){
+    return sb.from('stock_take_items').select('*')
+      .eq('venue_id',STOCK_VENUE).eq('dept',stDept).eq('month',stMonth)
+      .eq('active',true).order('sort_order').order('id');
+  });
   stItems = res.data || [];
+  if(res.error && typeof toast==='function')
+    toast('Not all items loaded ('+stItems.length+' so far) — the total may be incomplete. Reopen Stock Take.', true);
 }
 async function stLoadCounts(){
   stCounts = {};
   if(!stMonth) return;
-  var res = await sb.from('stock_take_counts').select('*')
-    .eq('venue_id',STOCK_VENUE).eq('dept',stDept).eq('month',stMonth);
+  var res = await stFetchAllPaged(function(){
+    return sb.from('stock_take_counts').select('*')
+      .eq('venue_id',STOCK_VENUE).eq('dept',stDept).eq('month',stMonth).order('id');
+  });
+  if(res.error && typeof toast==='function')
+    toast('Not all counts loaded — reopen Stock Take to be sure the total is right.', true);
   (res.data||[]).forEach(function(r){
     stCounts[r.item_id] = { qty:r.qty, unit:r.unit, counted_by:r.counted_by, counted_by_name:r.counted_by_name };
     if(r.unit) stUnitSel[r.item_id] = r.unit;
