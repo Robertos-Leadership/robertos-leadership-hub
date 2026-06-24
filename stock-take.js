@@ -176,6 +176,40 @@ async function stSetQty(itemId, value){
   return res || {};
 }
 
+// ── ADD to a count (the "+ add" box): sum what you just found onto the running
+// total. The add happens ATOMICALLY on the server (stock_take_add RPC) so two
+// people adding at the same moment never lose a bottle. We show the change
+// optimistically, then trust the server's returned running total. ──
+async function stAddQty(itemId, value){
+  if(!stUser) return;
+  var addBox = document.getElementById('st-add-'+itemId);
+  var delta = Number(value);
+  if(value==='' || isNaN(delta) || delta===0){ if(addBox) addBox.value=''; return; }
+  var it = stItems.find(function(x){ return x.id===itemId; });
+  var unit = it ? stItemUnit(it) : null;
+  var prev = stCounts[itemId] ? Object.assign({}, stCounts[itemId]) : null;
+  // optimistic: bump the local running total straight away
+  var base = (prev && prev.qty!=null) ? Number(prev.qty) : 0;
+  stCounts[itemId] = { qty:base+delta, unit:unit, counted_by:stUser.emp_id, counted_by_name:stUser.name };
+  stUpdateRowUI(itemId); stRenderTotals();
+  var res = await sb.rpc('stock_take_add', {
+    p_item_id:itemId, p_venue_id:STOCK_VENUE, p_dept:stDept, p_month:stMonth,
+    p_delta:delta, p_unit:unit, p_counted_by:stUser.emp_id, p_counted_by_name:stUser.name });
+  if(res && res.error){
+    if(prev) stCounts[itemId]=prev; else delete stCounts[itemId];
+    stUpdateRowUI(itemId); stRenderTotals();
+    toast('That add did NOT save — check the connection and try again.', true);
+    console.warn('stock_take_add failed', res.error);
+    return;
+  }
+  // server is the source of truth for the running total
+  if(res && res.data!=null){
+    stCounts[itemId].qty = Number(res.data);
+    stUpdateRowUI(itemId); stRenderTotals();
+  }
+  if(addBox){ addBox.value=''; }   // clear, ready for the next person
+}
+
 // ── derived ──
 function stFilteredItems(){
   var q = stSearch.toLowerCase();
@@ -232,7 +266,10 @@ function stInjectCss(){
     '.st-name{font-size:14px;font-weight:600;color:#2a1a10;line-height:1.25}'+
     '.st-tag{font-size:10px;font-weight:700;color:#7a4a00;background:#f6d79a;border-radius:5px;padding:1px 6px;margin-left:6px}'+
     '.st-meta{margin-top:4px}'+
-    '.st-qty{justify-self:center;width:76px;height:38px;text-align:center;border:1px solid #c9a84c;border-radius:8px;font-size:16px;background:#fff}'+
+    '.st-qtywrap{justify-self:center;display:flex;flex-direction:column;align-items:center;gap:4px}'+
+    '.st-qty{width:76px;height:38px;text-align:center;border:1px solid #c9a84c;border-radius:8px;font-size:16px;background:#fff}'+
+    '.st-add{width:76px;height:30px;text-align:center;border:1px dashed #1d7a4a;border-radius:8px;font-size:13px;color:#1d7a4a;background:#f3faf5}'+
+    '.st-add::placeholder{color:#69a883}'+
     '.st-unit{height:30px;background:#e1d3c2;border:1px solid #cbb892;border-radius:6px;font-size:12px;color:#8a7a55;max-width:180px;padding:0 4px}'+
     '.st-line{justify-self:end;min-width:96px;text-align:right;font-weight:700;color:#410207;font-size:13px;font-variant-numeric:tabular-nums}'+
     '.st-addbtn{margin:14px;width:calc(100% - 28px);height:42px;border:1px dashed #c9a84c;background:#fff;color:#410207;font-weight:700;border-radius:10px;cursor:pointer}'+
@@ -323,8 +360,12 @@ function stRenderRows(){
             '<div class="st-name">'+stEsc(it.name)+(it.is_added?'<span class="st-tag">added</span>':'')+'</div>'+
             '<div class="st-meta">'+unitCtl+'</div>'+
           '</div>'+
-          '<input class="st-qty" inputmode="decimal" placeholder="0" value="'+qv+'" '+(locked?'disabled':'')+
-            ' onfocus="stFocusRow(\''+it.id+'\',true)" onblur="stFocusRow(\''+it.id+'\',false)" onchange="stSetQty(\''+it.id+'\',this.value)">'+
+          '<div class="st-qtywrap">'+
+            '<input class="st-qty" inputmode="decimal" placeholder="0" value="'+qv+'" '+(locked?'disabled':'')+
+              ' onfocus="stFocusRow(\''+it.id+'\',true)" onblur="stFocusRow(\''+it.id+'\',false)" onchange="stSetQty(\''+it.id+'\',this.value)">'+
+            '<input class="st-add" id="st-add-'+it.id+'" inputmode="decimal" placeholder="+ add" '+(locked?'disabled':'')+
+              ' title="Add what you just found — it sums onto the count" onfocus="stFocusRow(\''+it.id+'\',true)" onblur="stFocusRow(\''+it.id+'\',false)" onchange="stAddQty(\''+it.id+'\',this.value)">'+
+          '</div>'+
           '<span class="st-line" id="st-line-'+it.id+'">'+stMoney(stLineValue(it))+'</span>'+
         '</div>'+
       '</div>';
@@ -337,7 +378,7 @@ function stRenderRows(){
 var stRowsTimer = null;
 function stSafeRenderRows(){
   var ae = document.activeElement;
-  if(ae && ae.classList && ae.classList.contains('st-qty')){
+  if(ae && ae.classList && (ae.classList.contains('st-qty') || ae.classList.contains('st-add'))){
     clearTimeout(stRowsTimer);
     stRowsTimer = setTimeout(function(){ if(stActive()) stSafeRenderRows(); }, 400);
     return;
