@@ -11,12 +11,26 @@
 //  (Leader page · finance · authenticated-only)
 // ══════════════════════════════════════════════
 function revInit(){ if(!state.rev) state.rev={ rates:{}, daily:[], targets:{}, budgets:{}, proposals:{}, propSeq:0, loaded:false, loading:false, period:null, view:'month', tablesMissing:false }; return state.rev; }
+// rev_daily grows one row per trading day. Page it so the 1000-row PostgREST cap
+// can never silently drop rows — and because it's ordered ascending, an unpaged
+// truncation would drop the NEWEST month (the one everyone looks at) first.
+async function revFetchAllDaily(){
+  var all=[], from=0, size=1000;
+  for(;;){
+    var r=await sb.from('rev_daily').select('*').order('service_date').range(from, from+size-1);
+    if(r.error) return { data:null, error:r.error };
+    var rows=r.data||[]; all=all.concat(rows);
+    if(rows.length<size) break;   // last (short) page reached
+    from+=size;
+  }
+  return { data:all, error:null };
+}
 async function loadRevenue(){
   var R=revInit(); if(R.loading) return; R.loading=true;
   try{
     var res=await Promise.all([
       sb.from('rev_rates').select('*'),
-      sb.from('rev_daily').select('*').order('service_date'),
+      revFetchAllDaily(),
       sb.from('rev_targets').select('*')
     ]);
     R.tablesMissing = !!(res[0].error||res[1].error||res[2].error);
@@ -189,10 +203,16 @@ function revSetView(v){ revInit().view=v; renderMain(); }
 // Set the monthly budget for the current period (empty = clear → back to rates pattern). Distributes across days by weekday pattern.
 async function revSaveMonthlyBudget(){
   var R=revInit(), p=R.period, v=revNum('rev-monthly-budget');
+  var had=(p in R.budgets), prev=R.budgets[p];   // snapshot for revert on failure
   if(v!=null) R.budgets[p]=v; else delete R.budgets[p];
   renderMain();
   var res=await sb.from('rev_targets').upsert({period:p, monthly_budget:v},{onConflict:'period'});
-  if(res.error){ console.error('rev monthly budget',res.error); alert('Could not save monthly budget: '+res.error.message+(res.error.code==='PGRST204'?'\n\nRun revenue-monthly-budget.sql in Supabase first.':'')); }
+  if(res.error){
+    if(had) R.budgets[p]=prev; else delete R.budgets[p];   // put the budget back so the screen never shows an unsaved figure as real
+    renderMain();
+    console.error('rev monthly budget',res.error);
+    alert('Could not save monthly budget — NOT stored (reverted on screen): '+res.error.message+(res.error.code==='PGRST204'?'\n\nRun revenue-monthly-budget.sql in Supabase first.':''));
+  }
 }
 
 // ── Edit a day (Restaurant/Lounge x Lunch/Dinner) ──
@@ -260,10 +280,18 @@ async function revSaveDay(){
     food_net:food, bev_net:bev, tobacco_net:tob,
     net_actual:net, updated_at:new Date().toISOString() };
   var R=revInit(); var i=R.daily.findIndex(function(x){ return String(x.service_date).slice(0,10)===ds; });
+  var prevRow=(i>=0)?R.daily[i]:null;   // snapshot for revert on failure
   if(i>=0) R.daily[i]=Object.assign({},R.daily[i],payload); else R.daily.push(payload);
   document.getElementById('rev-edit-modal').style.display='none'; renderMain();
   var res=await sb.from('rev_daily').upsert(payload,{onConflict:'service_date'});
-  if(res.error){ console.error('rev save',res.error); alert('Could not save: '+res.error.message+(res.error.code==='PGRST204'?'\n\nRun revenue-daypart-columns.sql in Supabase first.':'')); }
+  if(res.error){
+    // Put the grid back to the saved value so it never shows an unsaved figure as real.
+    if(prevRow){ R.daily[i]=prevRow; }
+    else { var j=R.daily.findIndex(function(x){ return String(x.service_date).slice(0,10)===ds; }); if(j>=0) R.daily.splice(j,1); }
+    renderMain();
+    console.error('rev save',res.error);
+    alert('Could not save — the figure was NOT stored (reverted on screen): '+res.error.message+(res.error.code==='PGRST204'?'\n\nRun revenue-daypart-columns.sql in Supabase first.':''));
+  }
 }
 
 // ── AI report agent (mirrors Kitchen survey-assistant pattern) ──
@@ -688,6 +716,7 @@ function renderRevenue(){
   if(!R.loaded){ if(!R.loading) loadRevenue(); return '<div class="loading">Loading revenue…</div>'; }
   if(R.tablesMissing){ return '<div class="rev-wrap"><div class="rev-setup"><div class="rev-h">Revenue module — setup needed</div><p>The revenue tables aren\'t in the database yet. In the Supabase SQL Editor (project paoaivwtkzujmrgrfjuq) run <b>revenue-schema.sql</b> then <b>revenue-seed-history.sql</b>, then reopen this tab.</p></div></div>'; }
   if(R.view==='year') return revRenderYear();
+  if(R.view==='forecast') return revRenderForecast();
   return revRenderMonth();
 }
 function revBar(pct){ var w=Math.max(0,Math.min(100,Math.round(pct))); return '<div class="rev-bar"><div class="rev-bar-fill" style="width:'+w+'%"></div></div>'; }
@@ -698,7 +727,7 @@ function revRenderMonth(){
   h.push('<div class="rev-wrap">');
   // toolbar
   h.push('<div class="rev-toolbar"><div class="rev-nav"><button class="rev-btn" onclick="revStep(-1)">&#8592;</button><span class="rev-period">'+revMonthLabel(p)+'</span><button class="rev-btn" onclick="revStep(1)">&#8594;</button><button class="rev-btn" onclick="revAddMonth()">+ Add month</button></div>'
-    +'<div class="rev-views"><button class="rev-vtab active" onclick="revSetView(\'month\')">Month</button><button class="rev-vtab" onclick="revSetView(\'year\')">Year</button><button class="rev-btn rev-ai-btn" onclick="revChatOpen()">&#9733; Ask / Reports</button></div></div>');
+    +'<div class="rev-views"><button class="rev-vtab active" onclick="revSetView(\'month\')">Month</button><button class="rev-vtab" onclick="revSetView(\'year\')">Year</button><button class="rev-vtab" onclick="revSetView(\'forecast\')">Forecast</button><button class="rev-btn rev-ai-btn" onclick="revChatOpen()">&#9733; Ask / Reports</button></div></div>');
   // monthly budget — enter once, auto-distributes across days by weekday pattern (editable per day)
   var mb=revMonthlyBudget(p), allocD=m.budgetTotal-(mb||0), onBudget=(mb!=null&&Math.abs(allocD)<1);
   h.push('<div class="rev-budget-bar">'
@@ -795,7 +824,7 @@ function revRenderYear(){
   var R=revInit(), year=revYearOf(R.period); var h=[];
   h.push('<div class="rev-wrap">');
   h.push('<div class="rev-toolbar"><div class="rev-nav"><button class="rev-btn" onclick="revSetPeriod(\''+(parseInt(year)-1)+'-01\')">&#8592;</button><span class="rev-period">'+year+'</span><button class="rev-btn" onclick="revSetPeriod(\''+(parseInt(year)+1)+'-01\')">&#8594;</button></div>'
-    +'<div class="rev-views"><button class="rev-vtab" onclick="revSetView(\'month\')">Month</button><button class="rev-vtab active" onclick="revSetView(\'year\')">Year</button></div></div>');
+    +'<div class="rev-views"><button class="rev-vtab" onclick="revSetView(\'month\')">Month</button><button class="rev-vtab active" onclick="revSetView(\'year\')">Year</button><button class="rev-vtab" onclick="revSetView(\'forecast\')">Forecast</button></div></div>');
   var ytdNet=0, ytdBudget=0;
   h.push('<div class="rev-section-h">'+year+' — month by month</div>');
   h.push('<div class="rev-grid-wrap"><table class="rev-grid"><thead><tr><th>Month</th><th>Net sales</th><th>Budget</th><th>vs Budget</th><th>Trading days</th></tr></thead><tbody>');
@@ -809,5 +838,109 @@ function revRenderYear(){
   var ytdVs=ytdBudget?(ytdNet-ytdBudget)/ytdBudget:'';
   h.push('<tr class="rev-total"><td>YTD</td><td>'+revMoney(ytdNet)+'</td><td>'+revMoney(ytdBudget)+'</td><td class="'+revPctClass(ytdVs)+'">'+revPct(ytdVs)+'</td><td></td></tr>');
   h.push('</tbody></table></div></div>');
+  return h.join('');
+}
+
+// ══════════════════════════════════════════════
+//  FORECAST — forward projection of a FUTURE month (no actuals yet).
+//  Pure math, app-side: each trading day = the recent weekday run-rate from
+//  ACTUAL till data × a seasonality factor the user sets (Dubai summer etc.).
+//  Sundays closed. Shows forecast vs target and the Mon–Wed "weak night" lever.
+// ══════════════════════════════════════════════
+function revDateMinusDays(ds,n){ var d=new Date(ds+'T12:00:00'); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+// Recent weekday averages (net/night) from actuals strictly BEFORE period p, within ~10 weeks of the latest actual.
+function revFcWeekdayAvgs(p){
+  var first=p+'-01';
+  var rows=revInit().daily.filter(function(r){ return r.net_actual!=null && String(r.service_date).slice(0,10)<first; });
+  rows.sort(function(a,b){ return String(a.service_date)<String(b.service_date)?1:-1; });   // newest first
+  var acc={}, counts={}, used=[];
+  if(rows.length){
+    var cutoff=revDateMinusDays(String(rows[0].service_date).slice(0,10),70);
+    rows.forEach(function(r){ var ds=String(r.service_date).slice(0,10); if(ds<cutoff) return; var wd=revWeekday(ds); acc[wd]=(acc[wd]||0)+Number(r.net_actual); counts[wd]=(counts[wd]||0)+1; used.push(ds); });
+  }
+  var avg={}; Object.keys(acc).forEach(function(wd){ avg[wd]=acc[wd]/counts[wd]; });
+  used.sort();
+  return {avg:avg, counts:counts, from:used[0]||null, to:used[used.length-1]||null, days:used.length};
+}
+function revForecastData(p, seasonPct){
+  var W=revFcWeekdayAvgs(p), avg=W.avg, dim=revDaysInMonth(p), f=1+(Number(seasonPct)||0)/100;
+  var order=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var rows={}; order.forEach(function(wd){ rows[wd]={wd:wd,count:0,avg:avg[wd]||0,adj:(avg[wd]||0)*f,subtotal:0}; });
+  var trend=0, season=0, trading=0;
+  for(var d=1; d<=dim; d++){ var ds=p+'-'+String(d).padStart(2,'0'); var wd=revWeekday(ds); if(wd==='Sunday') continue; trading++; var a=avg[wd]||0; rows[wd].count++; rows[wd].subtotal+=a*f; trend+=a; season+=a*f; }
+  var weak=rows.Monday.subtotal+rows.Tuesday.subtotal+rows.Wednesday.subtotal;
+  var strong=rows.Thursday.subtotal+rows.Friday.subtotal+rows.Saturday.subtotal;
+  var target=(revInit().targets&&revInit().targets[p])||0;
+  var gap=target?target-season:0;
+  var weakNights=rows.Monday.count+rows.Tuesday.count+rows.Wednesday.count;
+  return {period:p, season:Number(seasonPct)||0, window:W, dim:dim, trading:trading, rows:order.map(function(wd){return rows[wd];}),
+    trend:trend, seasonTotal:season, weak:weak, strong:strong, target:target, gap:gap,
+    weakNights:weakNights, weakUpliftPct:(weak&&gap>0)?gap/weak:0, weakPerNight:(weakNights&&gap>0)?gap/weakNights:0};
+}
+// ── Forecast nav/state ──
+function revFcPeriod(){ var R=revInit(); if(!R.fcPeriod) R.fcPeriod=revAddMonths(revLatestPeriod(),1); return R.fcPeriod; }
+function revFcSeasonVal(){ var R=revInit(); if(R.fcSeason==null) R.fcSeason=-18; return R.fcSeason; }
+function revFcStep(n){ var R=revInit(); R.fcPeriod=revAddMonths(revFcPeriod(),n); renderMain(); }
+function revFcSeason(v){ revInit().fcSeason=Number(v)||0; renderMain(); }
+function revFcCustom(){ var el=document.getElementById('rev-fc-season'); if(el) revFcSeason(el.value.trim()===''?0:Number(el.value)); }
+async function revFcSaveTarget(){
+  var R=revInit(), p=revFcPeriod(), v=revNum('rev-fc-target');
+  var had=(p in R.targets), prev=R.targets[p];
+  if(v!=null) R.targets[p]=v; else delete R.targets[p];
+  renderMain();
+  var res=await sb.from('rev_targets').upsert({period:p, monthly_target:v},{onConflict:'period'});
+  if(res.error){ if(had) R.targets[p]=prev; else delete R.targets[p]; renderMain(); console.error('rev target',res.error); alert('Could not save target — NOT stored (reverted on screen): '+res.error.message); }
+}
+function revRenderForecast(){
+  var R=revInit(), p=revFcPeriod(), sp=revFcSeasonVal(), fc=revForecastData(p,sp);
+  var h=[]; h.push('<div class="rev-wrap">');
+  // toolbar + view tabs
+  h.push('<div class="rev-toolbar"><div class="rev-nav"><button class="rev-btn" onclick="revFcStep(-1)">&#8592;</button><span class="rev-period">'+revMonthLabel(p)+'</span><button class="rev-btn" onclick="revFcStep(1)">&#8594;</button></div>'
+    +'<div class="rev-views"><button class="rev-vtab" onclick="revSetView(\'month\')">Month</button><button class="rev-vtab" onclick="revSetView(\'year\')">Year</button><button class="rev-vtab active" onclick="revSetView(\'forecast\')">Forecast</button><button class="rev-btn rev-ai-btn" onclick="revChatOpen()">&#9733; Ask / Reports</button></div></div>');
+  if(!fc.window.days){ h.push('<div class="rev-setup"><p>No actual revenue is recorded before '+revMonthLabel(p)+' yet, so there is nothing to project the forecast from. Enter some daily actuals first.</p></div></div>'); return h.join(''); }
+  // basis
+  h.push('<div class="rev-alloc rev-mut" style="display:block;margin:0 0 10px">Projected from your <b>real till data</b> — the recent run-rate per weekday over '+fc.window.days+' trading days ('+revMonthLabel(revPeriodOf(fc.window.from)).split(' ')[0]+'&nbsp;'+Number(fc.window.from.slice(8))+' → '+revMonthLabel(revPeriodOf(fc.window.to)).split(' ')[0]+'&nbsp;'+Number(fc.window.to.slice(8))+'). Sundays closed.</div>');
+  // seasonality control
+  var presets=[['Flat',0],['Mild −10%',-10],['Summer −18%',-18],['Deep −25%',-25]];
+  h.push('<div class="rev-budget-bar"><label class="rev-lbl" style="margin:0">Seasonality</label>');
+  presets.forEach(function(x){ h.push('<button class="rev-vtab'+(sp===x[1]?' active':'')+'" onclick="revFcSeason('+x[1]+')">'+x[0]+'</button>'); });
+  h.push('<input id="rev-fc-season" type="number" inputmode="decimal" class="rev-inp" style="width:80px" value="'+sp+'" onkeydown="if(event.key===\'Enter\')revFcCustom()"><span class="rev-lbl" style="margin:0">% vs run-rate</span>'
+    +'<button class="rev-btn" onclick="revFcCustom()">Apply</button></div>');
+  h.push('<div class="rev-alloc rev-mut" style="display:block;margin:-4px 0 10px;font-size:12px">Set how much demand changes vs the recent run-rate. Default −18% reflects the typical Dubai deep-summer dip — this is an <b>assumption you control</b>, not from your own July history.</div>');
+  // target control
+  var hasT=fc.target>0;
+  h.push('<div class="rev-budget-bar"><label class="rev-lbl" style="margin:0">Monthly target</label>'
+    +'<input id="rev-fc-target" type="number" inputmode="decimal" class="rev-inp" style="width:150px" value="'+(hasT?fc.target:'')+'" placeholder="1800000" onkeydown="if(event.key===\'Enter\')revFcSaveTarget()">'
+    +'<button class="rev-btn" onclick="revFcSaveTarget()">Set</button>'
+    +(hasT?'<span class="rev-alloc rev-mut">Task-force target for '+revMonthLabel(p).split(' ')[0]+'</span>':'<span class="rev-alloc rev-mut">Enter the target (e.g. 1,800,000) to see the gap.</span>')+'</div>');
+  // cards
+  h.push('<div class="rev-cards">');
+  h.push('<div class="rev-card"><div class="rev-k">Pure-trend forecast</div><div class="rev-v">'+revMoney(fc.trend)+'</div><div class="rev-sub">'+fc.trading+' trading days · run-rate only</div></div>');
+  h.push('<div class="rev-card"><div class="rev-k">Adjusted forecast</div><div class="rev-v">'+revMoney(fc.seasonTotal)+'</div><div class="rev-sub '+(fc.season<0?'rev-neg':(fc.season>0?'rev-pos':''))+'">'+(fc.season>0?'+':'')+fc.season+'% seasonality</div></div>');
+  h.push('<div class="rev-card"><div class="rev-k">Target</div><div class="rev-v">'+(hasT?revMoney(fc.target):'—')+'</div><div class="rev-sub">'+(hasT?'monthly':'set above')+'</div></div>');
+  h.push('<div class="rev-card"><div class="rev-k">Gap to target</div><div class="rev-v '+(hasT?(fc.gap>0?'rev-neg':'rev-pos'):'')+'">'+(hasT?((fc.gap>0?'−':'+')+revMoney(Math.abs(fc.gap)).replace('AED ','')):'—')+'</div><div class="rev-sub">'+(hasT?(fc.gap>0?'short of target':'ahead of target'):'')+'</div></div>');
+  h.push('</div>');
+  // weekday-mix table
+  h.push('<div class="rev-section-h">'+revMonthLabel(p)+' — by weekday (run-rate × seasonality)</div>');
+  h.push('<div class="rev-grid-wrap"><table class="rev-grid"><thead><tr><th>Weekday</th><th>Nights</th><th>Run-rate / night</th><th>Adjusted / night</th><th>Subtotal</th></tr></thead><tbody>');
+  fc.rows.forEach(function(w){ var weakNight=(w.wd==='Monday'||w.wd==='Tuesday'||w.wd==='Wednesday'); h.push('<tr'+(weakNight?' class="rev-sun"':'')+'><td class="rev-day">'+w.wd+(weakNight?' ·weak':'')+'</td><td>'+w.count+'</td><td class="rev-mut">'+revMoney(w.avg)+'</td><td>'+revMoney(w.adj)+'</td><td>'+revMoney(w.subtotal)+'</td></tr>'); });
+  h.push('<tr class="rev-total"><td>Total</td><td>'+fc.trading+'</td><td colspan="2" class="rev-mut">Sun closed</td><td>'+revMoney(fc.seasonTotal)+'</td></tr>');
+  h.push('</tbody></table></div>');
+  // the lever
+  var weakPct=fc.seasonTotal?Math.round(fc.weak/fc.seasonTotal*100):0;
+  h.push('<div class="rev-section-h">The lever — Monday–Wednesday</div>');
+  h.push('<div class="rev-proj">'
+    +'<div class="rev-proj-row"><span>Strong nights (Thu·Fri·Sat)</span><b>'+revMoney(fc.strong)+'</b></div>'
+    +'<div class="rev-proj-row"><span>Weak nights (Mon·Tue·Wed) — '+fc.weakNights+' nights, '+weakPct+'% of forecast</span><b>'+revMoney(fc.weak)+'</b></div>');
+  if(hasT && fc.gap>0){
+    h.push('<div class="rev-proj-row rev-proj-fore"><span>To close the '+revMoney(fc.gap).replace('AED ','')+' gap on Mon–Wed alone</span><b>+'+Math.round(fc.weakUpliftPct*100)+'% (≈ '+revMoney(fc.weakPerNight).replace('AED ','')+' more / weak night)</b></div>');
+    h.push('<div class="rev-alloc rev-mut" style="display:block;margin:8px 2px 0;font-size:12px">Strong nights are near capacity — the gap is closed by filling the quiet Mon–Wed (Vinyl / Jazz / Comedy nights), not by pushing the weekend.</div>');
+  } else if(hasT){
+    h.push('<div class="rev-proj-row rev-proj-fore"><span>On this forecast you are AT or ABOVE target</span><b>'+revMoney(-fc.gap).replace('AED ','')+' clear</b></div>');
+  } else {
+    h.push('<div class="rev-alloc rev-mut" style="display:block;margin:8px 2px 0;font-size:12px">Set a monthly target above to see the Mon–Wed uplift needed to close the gap.</div>');
+  }
+  h.push('</div>');
+  h.push('</div>');
   return h.join('');
 }

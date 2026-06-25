@@ -193,11 +193,13 @@ async function clEmail(crow, ds){
 }
 // Load recent closing-report operational history (for the Analyst's pattern-reading).
 async function clLoadHistory(){
-  var R=revInit(); if(R.closingsLoaded) return; R.closingsLoaded=true;
+  var R=revInit(); if(R.closingsLoaded) return;
   try{
     var res=await sb.from('closing_reports').select('service_date,manager_am,manager_pm,comps,shifts,comments_good,comments_bad,support,private_events').order('service_date',{ascending:false}).limit(60);
-    R.closings = res.error ? [] : (res.data||[]);
-  }catch(e){ R.closings=[]; }
+    if(res.error){ console.warn('[clLoadHistory] load failed — will retry next time', res.error); R.closings=[]; return; }   // leave closingsLoaded false so the AI never narrates from a failed (empty) load
+    R.closings = res.data||[];
+    R.closingsLoaded = true;   // only mark loaded once we actually have the data
+  }catch(e){ console.warn('[clLoadHistory]', e); R.closings=[]; }
 }
 // Compact text digest of the operations log → appended to the Analyst briefing.
 function revOpsDigest(){

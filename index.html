@@ -92,7 +92,7 @@ if ('serviceWorker' in navigator) {
   var swRefreshing = false;
   function swReload(){
     if (swRefreshing) return;
-    if (window.__schedEditing && window.__schedEditing()) { setTimeout(swReload, 5000); return; } // wait out a schedule edit
+    if (busy()) { setTimeout(swReload, 5000); return; } // wait out a mid-edit (focused field, schedule, closing, or revenue form)
     swRefreshing = true; location.reload();
   }
   navigator.serviceWorker.addEventListener('controllerchange', swReload);
@@ -4789,7 +4789,9 @@ const FOH_ATT_START      = '2026-06-13';
 window.__schedEditing = function(){
   try{
     if(fohSchedUnlocked || fohSchedPasteMode) return true;
-    var ids = ['foh-sch-pin-modal','foh-sch-modal','foh-sch-ev-modal'];
+    // Any of these open = a manager is mid-edit; a deploy must not reload under them.
+    // (schedule edit modals + the long closing-report form + the revenue day/budget editor)
+    var ids = ['foh-sch-pin-modal','foh-sch-modal','foh-sch-ev-modal','cl-modal','rev-edit-modal'];
     for(var i=0;i<ids.length;i++){
       var m = document.getElementById(ids[i]);
       if(m && m.style.display !== 'none' && m.offsetParent !== null) return true;
@@ -6249,10 +6251,10 @@ async function chkShowHistory(){
   }
 })();
 </script>
-<script src="foh-revenue.js?v=2026-06-25.5"></script>
+<script src="foh-revenue.js?v=2026-06-25.7"></script>
 <script src="foh-closing.js?v=2026-06-25.3"></script>
 <script src="foh-ops.js?v=2026-06-25.2"></script>
-<script src="stock-take.js?v=2026-06-23.2"></script>
+<script src="stock-take.js?v=2026-06-25.4"></script>
 
 <!-- FOH Schedule: PIN modal -->
 <div id="foh-sch-pin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center" onclick="fohSchedClosePin(event)">
