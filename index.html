@@ -4798,6 +4798,28 @@ window.__schedEditing = function(){
   return false;
 };
 
+// ── Traceable-send identity gate (validated against foh_staff) ──────────────
+// Sends that leave the building (roster → HR, closing report → team) must carry
+// who sent them. Prompt for an Employee ID, validate it against the active
+// FOH staff list (super-user passcodes allowed, same as stock-take), return
+// {emp_id,name} or null. Mirrors the kitchen resetIdentity() gate.
+const FOH_SEND_SUPER = { '1212': 'Admin', '0000': 'Cost Controller' };
+async function fohRequireStaffId(actionLabel){
+  var id = (prompt('Enter your Employee ID to '+actionLabel+'.\n\nThis is recorded.')||'').trim();
+  if(!id) return null;
+  if(FOH_SEND_SUPER[id]) return { emp_id:id, name:FOH_SEND_SUPER[id] };
+  var res = await sb.from('foh_staff').select('name,emp_id').eq('emp_id', id).eq('active', true).limit(1);
+  var s = res.data && res.data[0];
+  if(!s){ alert('Employee ID "'+id+'" was not found in the staff list.\nCancelled.'); return null; }
+  return { emp_id:id, name:s.name };
+}
+// Best-effort audit — silent if the reset_log table isn't created in the FOH
+// project yet; the ID gate above is the real protection either way.
+async function fohLogSend(who, action, scope){
+  try{ await sb.from('reset_log').insert({ app:'foh', action:action, scope:scope||null, item_count:null, emp_id:who.emp_id, emp_name:who.name }); }
+  catch(e){ console.warn('[fohLogSend] not recorded', e); }
+}
+
 // ── Helpers (reuse same date utils already in file) ──
 function fohSchedRosterKey(sid, date){ return sid + '|' + date; }
 function fohSchedTodayStr(){ return formatDate(new Date()); }
@@ -5801,7 +5823,8 @@ async function openFohSchedule(){
 async function fohSchedSendToHR(){
   var _wkEnd = addDays(fohSchedWeekStart, 6);
   var _wkStr = fohSchedWeekStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' to ' + _wkEnd.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-  if(!confirm("Email this week's roster (" + _wkStr + ") to HR now?")) return;
+  var rosterWho = await fohRequireStaffId("email this week's roster (" + _wkStr + ") to HR");
+  if(!rosterWho) return;
   var btn = document.getElementById('foh-svt-hr');
   if(btn){ btn.textContent = '⏳ Generating...'; btn.disabled = true; }
   try {
@@ -5937,11 +5960,13 @@ async function fohSchedSendToHR(){
     var emailRes = await fetch('https://zrpglswalgjbtghudmhu.supabase.co/functions/v1/send-roster', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+KITCHEN_KEY },
-      body:JSON.stringify({ weekStr:weekStr, fileName:fileName, xlsxBase64:xlsxBase64, source:'FOH' })
+      body:JSON.stringify({ weekStr:weekStr, fileName:fileName, xlsxBase64:xlsxBase64, source:'FOH', sentBy:rosterWho.name })
     });
 
     var emailData = await emailRes.json();
     if(!emailRes.ok) throw new Error(emailData.message||'Email failed: '+emailRes.status);
+
+    fohLogSend(rosterWho, 'roster_send', weekStr);
 
     if(btn){
       btn.textContent = '✓ Sent to HR';
@@ -6225,7 +6250,7 @@ async function chkShowHistory(){
 })();
 </script>
 <script src="foh-revenue.js?v=2026-06-22.5"></script>
-<script src="foh-closing.js?v=2026-06-25.1"></script>
+<script src="foh-closing.js?v=2026-06-25.2"></script>
 <script src="foh-ops.js?v=2026-06-22.4"></script>
 <script src="stock-take.js?v=2026-06-23.2"></script>
 

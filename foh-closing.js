@@ -254,10 +254,16 @@ async function clSave(andEmail){
   }
   // Block blank emails: don't fire a closing-report email to the team when the
   // snapshot has no real content (mirrors the kitchen blank-submit guard).
+  var clSendWho = null;
   if(andEmail){
     var anyShiftNote=['day','night','late'].some(function(k){ return (shifts[k].feedback||'').trim() || (shifts[k].challenges||'').trim(); });
     var hasAny = net!=null || clVal('cl-mgr-am') || clVal('cl-mgr-pm') || good.length || bad.length || comps.length || clVal('cl-events') || clVal('cl-support') || anyShiftNote;
     if(!hasAny){ alert('Nothing to email — this closing report is empty.\n\nAdd revenue, a manager, or notes before using Save & Email.'); return; }
+    // Traceable send: require a validated Employee ID before emailing the team.
+    if(typeof fohRequireStaffId === 'function'){
+      clSendWho = await fohRequireStaffId('email the closing report to the team');
+      if(!clSendWho) return;
+    }
   }
   var btns=[document.getElementById('cl-save'),document.getElementById('cl-save-email')];
   function setBusy(t){ btns.forEach(function(b){ if(b){ b.disabled=!!t; } }); var se=document.getElementById('cl-save-email'); if(se) se.textContent=t?(andEmail?'Saving & emailing…':'Saving…'):'Save & Email'; }
@@ -280,7 +286,7 @@ async function clSave(andEmail){
     if(idx>=0) R.daily[idx]=Object.assign({},R.daily[idx],revRow); else R.daily.push(revRow);
   }
   var emailMsg='';
-  if(andEmail){ var em=await clEmail(crow, ds); emailMsg = em.ok ? ' · emailed to the team' : ('\n\n⚠️ Email NOT sent: '+em.msg+'\n(Deploy send-closing-report + set RESEND_API_KEY.)'); }
+  if(andEmail){ var em=await clEmail(crow, ds); emailMsg = em.ok ? ' · emailed to the team' : ('\n\n⚠️ Email NOT sent: '+em.msg+'\n(Deploy send-closing-report + set RESEND_API_KEY.)'); if(em.ok && clSendWho && typeof fohLogSend==='function') fohLogSend(clSendWho, 'closing_report_send', ds); }
   setBusy(false);
   if(res2.error){
     // Closing report itself saved (source of truth), but the revenue rollup did
