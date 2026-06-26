@@ -2098,7 +2098,7 @@ if ('serviceWorker' in navigator) {
     <div class="foh-hero-content">
       <img class="foh-hero-logo" src="robertos-logo-white.svg" alt="Roberto's">
     </div>
-    <div id="foh-build" style="position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4);z-index:3;font-variant-numeric:tabular-nums;">build 2026-06-25.2</div>
+    <div id="foh-build" style="position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4);z-index:3;font-variant-numeric:tabular-nums;">build 2026-06-25.5</div>
   </div>
 
   <!-- main scroll area -->
@@ -2562,8 +2562,8 @@ function loadAdminUsers(){
   // Read-only — nothing is written or moved; the two apps keep working as-is.
   Promise.all([
     sb.from('app_users').select('*').order('name'),
-    sb.from('foh_staff').select('id,name,emp_id,role,section,active,sort_order').eq('active',true),
-    sbKitchen.from('staff').select('id,name,emp_id,designation,station_key,active,sort_order').eq('active',true),
+    sb.from('foh_staff').select('*').eq('active',true),
+    sbKitchen.from('staff').select('*').eq('active',true),
     sb.from('app_config').select('value').eq('key','signers').limit(1)
   ]).then(function(res){
     state.adminUsers   = res[0].error ? [] : (res[0].data||[]);
@@ -2620,7 +2620,7 @@ async function adminDeleteUser(email){
 }
 function adminRefresh(){ state.adminLoaded=false; loadAdminUsers(); }
 function adminOpenSupabase(){ window.open(SUPA_USERS_URL,'_blank','noopener'); }
-var ADM_CSS='.adm-wrap{max-width:760px;margin:0 auto;padding:18px 16px 90px;}'
+var ADM_CSS='.adm-wrap{max-width:1100px;margin:0 auto;padding:18px 16px 90px;}'
   +'.adm-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;}'
   +'.adm-head h2{font-family:Georgia,serif;color:#400207;margin:0;font-size:22px;}'
   +'.adm-note{font-size:13px;color:#6b5a44;line-height:1.5;margin:6px 0 14px;}'
@@ -2708,7 +2708,49 @@ var ADM_CSS='.adm-wrap{max-width:760px;margin:0 auto;padding:18px 16px 90px;}'
   +'.px-dsec{margin-bottom:11px;}.px-dsec:last-child{margin-bottom:0;}'
   +'.px-dlbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9c8a72;margin-bottom:6px;}'
   +'.px-dhint{font-size:12.5px;color:#7a6a52;margin-bottom:8px;line-height:1.5;}'
-  +'.px-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#400207;color:#fff;padding:10px 18px;border-radius:11px;font-size:13px;z-index:100002;box-shadow:0 8px 30px rgba(40,2,7,.35);}';
+  +'.px-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#400207;color:#fff;padding:10px 18px;border-radius:11px;font-size:13px;z-index:100002;box-shadow:0 8px 30px rgba(40,2,7,.35);}'
+  /* responsive control centre: cards on phone (A) → list+detail on wide (B) */
+  +'.px2-flex{display:flex;gap:16px;align-items:flex-start;}'
+  +'.px2-list{width:300px;flex:none;border:0.5px solid #e8ddc9;border-radius:12px;overflow:hidden;max-height:74vh;overflow-y:auto;}'
+  +'.px2-grp{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9c8a72;padding:8px 12px 4px;background:#fbf7f0;border-bottom:0.5px solid #f3ecdd;}'
+  +'.px2-detailwrap{flex:1;min-width:0;}'
+  +'.px2-row{width:100%;text-align:left;display:flex;align-items:center;gap:9px;padding:10px 11px;background:#fff;border:none;border-bottom:0.5px solid #f3ecdd;cursor:pointer;}'
+  +'.px2-row:hover{background:#faf6ee;}'
+  +'.px2-row.on{background:#f3ead8;}'
+  +'.px2-rowtxt{min-width:0;flex:1;overflow:hidden;}'
+  +'.px2-row .nm{font-size:13px;font-weight:600;color:#2c1810;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+  +'.px2-row .rl{font-size:11.5px;color:#8a7a62;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+  +'.px-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}'
+  +'.px-card{text-align:left;background:#fff;border:0.5px solid #ece2d0;border-radius:12px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:6px;}'
+  +'.px-card:hover{border-color:#C9A84C;background:#fdfbf6;}'
+  +'.px-card .nm{font-size:14px;font-weight:600;color:#2c1810;}'
+  +'.px-card .rl{font-size:12px;color:#7a6a52;}'
+  +'.px-av{width:34px;height:34px;border-radius:50%;background:#E8D9C7;color:#6B1F2A;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex:none;}'
+  +'.px-av.lg{width:48px;height:48px;font-size:16px;}'
+  +'.px-av.sm{width:28px;height:28px;font-size:11px;}'
+  +'.px-rb{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}'
+  +'.px-rb .px-badge{margin-left:0;}'
+  +'.px-sig{background:#C9A84C;color:#400207;}'
+  +'.px-nc{background:#fbe9e6;color:#b3402f;}'
+  +'.px-off{background:#eee7d8;color:#7a6a52;}'
+  +'.px-venue{font-size:10.5px;color:#7a6a52;background:#f0e8da;padding:2px 8px;border-radius:9px;white-space:nowrap;}'
+  +'.px-back{background:none;border:none;color:#6B1F2A;font-size:14px;cursor:pointer;padding:6px 0;margin-bottom:6px;}'
+  +'.px-dempty{color:#9c8a72;font-size:13px;padding:30px 14px;text-align:center;border:0.5px dashed #e0d4bf;border-radius:12px;}'
+  +'.px-panel{background:#fff;border:0.5px solid #e8ddc9;border-radius:12px;padding:16px 18px;}'
+  +'.px-phead{display:flex;gap:13px;align-items:center;margin-bottom:14px;}'
+  +'.px-pname{font-size:18px;font-weight:600;color:#2c1810;font-family:Georgia,serif;}'
+  +'.px-prole{font-size:12.5px;color:#7a6a52;margin:3px 0 5px;}'
+  +'.px-flds{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}'
+  +'.px-fld label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#9c8a72;margin-bottom:5px;}'
+  +'.px-fld input{width:100%;box-sizing:border-box;border:1px solid #d8cbb6;border-radius:8px;padding:9px 11px;font-size:14px;color:#2c1810;background:#fff;}'
+  +'.px-fld input:focus{outline:none;border-color:#6B1F2A;}'
+  +'.px-fld .ro{padding:9px 0;color:#7a6a52;font-size:14px;}'
+  +'.px-psec{margin-top:15px;}'
+  +'.px-pslbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#9c8a72;margin-bottom:8px;}'
+  +'.px-pill{font-size:12.5px;padding:7px 12px;border-radius:8px;border:1px solid #e0d4bf;background:#fff;color:#7a6a52;cursor:pointer;margin:0 6px 6px 0;display:inline-block;}'
+  +'.px-pill.on{background:#6B1F2A;color:#fff;border-color:#6B1F2A;}'
+  +'.px-prm{font-size:12.5px;padding:7px 12px;border-radius:8px;border:1px solid #e9c7c2;background:#fff;color:#b3402f;cursor:pointer;}'
+  +'.px-dhint{font-size:12.5px;color:#7a6a52;margin-bottom:8px;line-height:1.5;}';
 
 function admNorm(s){ return String(s==null?'':s).trim().toLowerCase(); }
 // Build ONE unified people list from kitchen staff + FOH staff + office logins.
@@ -2723,9 +2765,9 @@ function admBuildPeople(){
   function match(nm){ var s=admNorm(nm); if(!s) return null; if(byName[s]) return byName[s]; for(var k in byName){ if(k.indexOf(s+' ')===0) return byName[k]; } return null; }
   var out=[];
   (state.adminKitchen||[]).forEach(function(p){ var lg=match(p.name); if(lg) matched[lg.email]=true;
-    out.push({src:'kitchen',id:p.id,name:p.name||'',emp_id:p.emp_id?String(p.emp_id):'',role:p.designation||'',section:p.station_key||'',where:'Kitchen',login:lg}); });
+    out.push({src:'kitchen',id:p.id,name:p.name||'',emp_id:p.emp_id?String(p.emp_id):'',role:p.designation||'',section:p.station_key||'',where:'Kitchen',login:lg,in_schedule:p.in_schedule!==false}); });
   (state.adminFoh||[]).forEach(function(p){ var lg=match(p.name); if(lg) matched[lg.email]=true;
-    out.push({src:'foh',id:p.id,name:p.name||'',emp_id:p.emp_id?String(p.emp_id):'',role:p.role||'',section:p.section||'',where:'FOH',login:lg}); });
+    out.push({src:'foh',id:p.id,name:p.name||'',emp_id:p.emp_id?String(p.emp_id):'',role:p.role||'',section:p.section||'',where:'FOH',login:lg,in_schedule:p.in_schedule!==false}); });
   users.filter(function(u){ return !matched[u.email]; }).forEach(function(u){
     out.push({src:'office',id:u.email,name:u.name||u.email,emp_id:'',role:'',section:'',where:'Office',email:u.email,login:u}); });
   return out;
@@ -2738,12 +2780,10 @@ function admApplyFilter(){
   var inp=document.getElementById('ppl-search');
   if(inp) state.adminQuery=inp.value;
   var q=admNorm(inp?inp.value:(state.adminQuery||''));
-  var rows=document.querySelectorAll('#px-body .px-row'); var vis=0;
-  for(var i=0;i<rows.length;i++){ var r=rows[i];
+  var items=document.querySelectorAll('#px-people .px-person'); var vis=0;
+  for(var i=0;i<items.length;i++){ var r=items[i];
     var hay=r.getAttribute('data-hay')||'';
     var show=!q||hay.indexOf(q)!==-1; r.style.display=show?'':'none';
-    var det=r.nextElementSibling;   // an expanded person's detail row sits right after it
-    if(det&&det.classList&&det.classList.contains('px-detailrow')) det.style.display=show?'':'none';
     if(show) vis++;
   }
   var c=document.getElementById('ppl-count'); if(c) c.textContent=vis+' shown';
@@ -2802,15 +2842,149 @@ async function admRemove(src,id){
 // person's expand panel (admDetailHTML). No more separate toggled screens.
 function renderAdmin(){
   if(!state.adminLoaded){ loadAdminUsers(); return '<div class="loading">Loading…</div>'; }
-  if(!state.adminSort) state.adminSort={col:'where',dir:1};
-  state.adminSel=state.adminSel||{};
-  return '<style>'+ADM_CSS+'</style>'+admGrid();
+  window.__admWide = window.innerWidth>=760;
+  return '<style>'+ADM_CSS+'</style>'+admControlCentre();
 }
 // "Who can sign" — per-action authorized signers, now edited inline in each FOH
 // person's detail panel (admDetailHTML). Saved to app_config via admSaveSigners.
 async function admSaveSigners(){
   var res=await sb.from('app_config').upsert({key:'signers',value:state.adminSigners||{},updated_at:new Date().toISOString()},{onConflict:'key'});
   if(res.error) alert('Could not save: '+res.error.message+'\n\n(If this is the first time, run the app_config table SQL once.)');
+}
+
+/* ===================================================================
+   RESPONSIVE CONTROL CENTRE — "Person is the hub".
+   Phone  (A): cards grid → tap a card → full-screen person panel (Back to return).
+   Wide   (B): people list on the left + that person's panel on the right.
+   Same panel (admDetailFull) in both; same data + write-back + guard as before.
+   =================================================================== */
+function admIni(n){ var p=String(n||'').trim().split(/\s+/); return ((p[0]||'')[0]||'')+((p[1]||'')[0]||''); }
+function admSignsAny(p){ if(p.src!=='foh') return false; var s=state.adminSigners||{}; for(var k in s){ if((s[k]||[]).indexOf(p.id)>-1) return true; } return false; }
+function admBadges(p){ var b='';
+  if(p.login) b+= p.login.is_admin?'<span class="px-badge px-admin">admin</span>':'<span class="px-badge px-login">login</span>';
+  if(admSignsAny(p)) b+='<span class="px-badge px-sig">signs</span>';
+  if(!p.emp_id && p.src!=='office') b+='<span class="px-badge px-nc">no code</span>';
+  if(p.src!=='office' && p.in_schedule===false) b+='<span class="px-badge px-off">off roster</span>';
+  return b;
+}
+function admPeopleFiltered(){
+  var people=admBuildPeople(), where=state.adminWhere||'all';
+  var list=people.filter(function(p){ if(where==='all') return true; if(where==='missing') return !p.emp_id&&p.src!=='office'; if(where==='login') return !!p.login; return p.where===where; });
+  list.sort(function(a,b){ return a.where.localeCompare(b.where)||admNorm(a.name).localeCompare(admNorm(b.name)); });
+  return list;
+}
+function admResolvePick(list){ var keys=list.map(admKey); if(state.adminPick && keys.indexOf(state.adminPick)>-1) return state.adminPick; return keys[0]||null; }
+function admBarHTML(){
+  var all=admBuildPeople();
+  var miss=all.filter(function(p){ return !p.emp_id&&p.src!=='office'; }).length;
+  var logins=all.filter(function(p){ return !!p.login; }).length;
+  var where=state.adminWhere||'all';
+  var chipsDef=[['all','All · '+all.length],['Kitchen','Kitchen'],['FOH','FOH'],['Office','Office'],['missing','Missing code · '+miss],['login','Has login · '+logins]];
+  var chipHTML=chipsDef.map(function(c){ return '<button class="ppl-chip'+(where===c[0]?' on':'')+'" data-w="'+c[0]+'" onclick="admSetWhere(\''+c[0]+'\')">'+admEsc(c[1])+'</button>'; }).join('');
+  return '<div class="adm-head"><h2>People — control centre</h2><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-sm" onclick="adminRefresh()">Refresh</button><button class="btn btn-sm" onclick="admPasteOpen()">Paste codes</button><button class="btn btn-sm" onclick="admAddLoginOpen(\'\')">+ Add login</button><button class="btn btn-gold" onclick="admAddOpen()">+ Add person</button></div></div>'
+    +'<div class="ppl-sum">Everyone who touches either app, in one place — <b>'+all.length+' people</b>. Tap a person to set their employee ID, app access and signing. A code is optional — blank is fine for office &amp; freelance.</div>'
+    +'<div class="px-bar"><input id="ppl-search" class="ppl-search" placeholder="Search name, code or role…" value="'+admEsc(state.adminQuery||'')+'" oninput="admApplyFilter()"></div>'
+    +'<div class="ppl-chips">'+chipHTML+'</div>';
+}
+function admControlCentre(){
+  var wide=window.innerWidth>=760;
+  var list=admPeopleFiltered();
+  var count='<div class="ppl-listhead"><span id="ppl-count">'+list.length+' shown</span></div>';
+  if(wide){
+    var pick=admResolvePick(list);
+    var lastW='';
+    var rows=list.map(function(p){ var h=''; if(p.where!==lastW){ lastW=p.where; h='<div class="px2-grp">'+admEsc(p.where)+'</div>'; } return h+admListRow(p,pick); }).join('') || '<div class="px-dempty" style="border:none;">No people found.</div>';
+    var detail=pick?admDetailFull(admByKey(pick)):'<div class="px-dempty">Select a person on the left.</div>';
+    return '<div class="adm-wrap">'+admBarHTML()
+      +'<div class="px2-flex"><div class="px2-list" id="px-people">'+rows+'</div><div class="px2-detailwrap">'+detail+'</div></div>'
+      +count+'</div>';
+  }
+  // narrow (phone): a tapped person shows full-screen; otherwise the cards grid
+  if(state.adminPick && admByKey(state.adminPick)){
+    return '<div class="adm-wrap"><button class="px-back" onclick="admBack()">← All people</button>'+admDetailFull(admByKey(state.adminPick))+'</div>';
+  }
+  var cards=list.map(admCard).join('') || '<div class="px-dempty">No people found.</div>';
+  return '<div class="adm-wrap">'+admBarHTML()+'<div class="px-cards" id="px-people">'+cards+'</div>'+count+'</div>';
+}
+function admListRow(p,pick){
+  var key=admKey(p);
+  var hay=admNorm(p.name+' '+(p.emp_id||'')+' '+(p.role||'')+' '+(p.email||'')+' '+p.where);
+  return '<button class="px-person px2-row'+(pick===key?' on':'')+'" data-hay="'+admEsc(hay)+'" onclick="admPick(\''+admEsc(key)+'\')">'
+    +'<span class="px-av sm">'+admEsc(admIni(p.name))+'</span>'
+    +'<span class="px2-rowtxt"><span class="nm">'+admEsc(p.name)+'</span><span class="rl">'+admEsc(p.role||p.email||p.where)+'</span></span>'
+    +'<span class="px-rb">'+admBadges(p)+'</span></button>';
+}
+function admCard(p){
+  var key=admKey(p);
+  var hay=admNorm(p.name+' '+(p.emp_id||'')+' '+(p.role||'')+' '+(p.email||'')+' '+p.where);
+  return '<button class="px-person px-card" data-hay="'+admEsc(hay)+'" onclick="admPick(\''+admEsc(key)+'\')">'
+    +'<span style="display:flex;align-items:center;gap:9px;"><span class="px-av">'+admEsc(admIni(p.name))+'</span><span class="px-venue">'+admEsc(p.where)+'</span></span>'
+    +'<span class="nm">'+admEsc(p.name)+'</span><span class="rl">'+admEsc(p.role||p.email||'')+'</span>'
+    +'<span class="px-rb">'+admBadges(p)+'</span></button>';
+}
+function admPill(label,on,onclick){ return '<button class="px-pill'+(on?' on':'')+'" onclick="'+onclick+'">'+(on?'✓ ':'')+admEsc(label)+'</button>'; }
+function admDetailFull(p){
+  if(!p) return '<div class="px-dempty">Select a person.</div>';
+  var off=p.src==='office', key=admKey(p), ek=admEsc(key);
+  var nameFld='<div class="px-fld"><label>Full name</label><input value="'+admEsc(p.name)+'" onchange="admPanelSave(\''+ek+'\',\'name\',this)"></div>';
+  var codeFld=off
+    ? '<div class="px-fld"><label>Employee ID</label><div class="ro">— office login —</div></div>'
+    : '<div class="px-fld"><label>Employee ID</label><input value="'+admEsc(p.emp_id||'')+'" placeholder="— none —" onchange="admPanelSave(\''+ek+'\',\'code\',this)"></div>';
+  var roleFld=off
+    ? '<div class="px-fld"><label>Email</label><div class="ro">'+admEsc(p.email||'')+'</div></div>'
+    : '<div class="px-fld"><label>Role</label><input value="'+admEsc(p.role||'')+'" onchange="admPanelSave(\''+ek+'\',\'role\',this)"></div>';
+  var venueFld='<div class="px-fld"><label>Where</label><div class="ro">'+admEsc(p.where)+'</div></div>';
+  var sectionFld=off?'':'<div class="px-fld"><label>'+(p.src==='foh'?'Section':'Station')+'</label><div class="ro">'+admEsc(p.section||'—')+'</div></div>';
+  var schedSec='';
+  if(p.src!=='office'){
+    var inSch=p.in_schedule!==false;
+    var sched_which=(p.src==='kitchen'?'Kitchen':'FOH');
+    schedSec='<div class="px-psec"><div class="px-pslbl">'+sched_which+' weekly schedule (roster)</div>'
+      +'<button class="px-pill'+(inSch?' on':'')+'" onclick="admScheduleToggle(\''+ek+'\')">'+(inSch?'✓ Shows in the schedule':'Hidden from the schedule')+'</button>'
+      +'<div class="px-dhint" style="margin-top:6px;">Turn off for people who shouldn’t appear on the weekly roster (office, freelance, on leave) — they stay in this list and keep their records.</div></div>';
+  }
+  var loginSec='';
+  if(p.login){
+    var email=p.login.email, ee=admEsc(email);
+    var acc=ADMIN_MODULES.map(function(m){ return admPill(m.n,(p.login.modules||[]).indexOf(m.k)>-1,'adminToggle(\''+ee+'\',\''+m.k+'\')'); }).join('');
+    acc+=admPill('Admin',p.login.is_admin,'adminToggleAdmin(\''+ee+'\')');
+    var notif=ADMIN_NOTIFY.map(function(nt){ return admPill(nt.n,(p.login.notify||[]).indexOf(nt.k)>-1,'adminToggleNotify(\''+ee+'\',\''+nt.k+'\')'); }).join('');
+    loginSec='<div class="px-psec"><div class="px-pslbl">App access · '+ee+'</div><div>'+acc+'</div><div class="px-pslbl" style="margin-top:11px;">Email alerts</div><div>'+notif+'</div><div style="margin-top:11px;"><button class="px-prm" onclick="adminDeleteUser(\''+ee+'\')">Remove login</button></div></div>';
+  } else if(!off){
+    loginSec='<div class="px-psec"><div class="px-pslbl">App login</div><div class="px-dhint">No login — this person doesn’t sign in to the manager area. Add one only if they need access.</div><button class="px-pill" onclick="admAddLoginOpen(\''+ek+'\')">+ Add a login</button></div>';
+  }
+  var signSec='';
+  if(p.src==='foh'){
+    var sg=state.adminSigners||{}, ACTS=[['closing_report','Closing report'],['roster','Roster to HR']];
+    var st=ACTS.map(function(a){ return admPill(a[1],(sg[a[0]]||[]).indexOf(p.id)>-1,'admSignerToggle(\''+a[0]+'\',\''+admEsc(String(p.id))+'\')'); }).join('');
+    signSec='<div class="px-psec"><div class="px-pslbl">Can tap-sign</div><div>'+st+'</div></div>';
+  }
+  var removeSec=off?'':'<div class="px-psec"><button class="px-prm" onclick="admRemove(\''+p.src+'\',\''+admEsc(String(p.id))+'\')">Remove from '+(p.src==='kitchen'?'Kitchen':'FOH')+' staff</button></div>';
+  return '<div class="px-panel"><div class="px-phead"><span class="px-av lg">'+admEsc(admIni(p.name))+'</span><div style="min-width:0;"><div class="px-pname">'+admEsc(p.name)+'</div><div class="px-prole">'+admEsc(p.role||(off?'Office / HQ':''))+' · '+admEsc(p.where)+'</div><div class="px-rb">'+admBadges(p)+'</div></div></div>'
+    +'<div class="px-flds">'+nameFld+codeFld+roleFld+venueFld+sectionFld+'</div>'
+    +schedSec+loginSec+signSec+removeSec+'</div>';
+}
+function admScheduleToggle(key){
+  var p=admByKey(key); if(!p||p.src==='office') return;
+  var cur=p.in_schedule!==false;
+  admWrite(p,'in_schedule',!cur).then(function(ok){ if(!ok) return; renderMain(); admAfterRender(function(){ try{admApplyFilter();}catch(e){} }); admToast(cur?'Hidden from schedule':'Now shows in schedule'); });
+}
+function admPick(key){ state.adminPick=key; renderMain(); admAfterRender(function(){ try{admApplyFilter();}catch(e){} }); }
+function admBack(){ state.adminPick=null; renderMain(); admAfterRender(function(){ try{admApplyFilter();}catch(e){} }); }
+// save an edited field; writes back (foh_staff via sb / kitchen staff via sbKitchen / office name via app_users),
+// runs the emp_id collision guard, reverts the box on clash or error. No full re-render = keeps typing smooth.
+function admPanelSave(key,field,el){
+  var p=admByKey(key); if(!p) return;
+  var val=(el.value||'').trim();
+  if(off_(p)&&field!=='name') return;
+  if(field==='code'){ var c=admCodeClash(val,p.src,p.id); if(c){ alert('Employee ID '+val+' already belongs to '+c.name+' ('+c.where+').\n\nEach code must belong to one person — give this person a different code, or clear '+c.name+'’s first.'); el.value=p.emp_id||''; return; } }
+  admWrite(p,field,val).then(function(ok){ if(!ok){ el.value=(field==='code'?(p.emp_id||''):(field==='role'?(p.role||''):p.name)); return; } admToast('Saved'); });
+}
+function off_(p){ return p.src==='office'; }
+// re-render when the screen crosses the phone/wide breakpoint so the layout follows
+if(typeof window!=='undefined' && !window.__admResizeBound){
+  window.addEventListener('resize',function(){ if(state.currentTab!=='admin') return; var w=window.innerWidth>=760; if(w!==window.__admWide){ window.__admWide=w; renderMain(); admAfterRender(function(){ try{admApplyFilter();}catch(e){} }); } });
+  window.__admResizeBound=true;
 }
 function admSignerToggle(action,id){
   var s=state.adminSigners||(state.adminSigners={});
@@ -2996,11 +3170,19 @@ function admWrite(p,col,val){
     return adminSave({email:u.email,name:val,modules:u.modules,is_admin:u.is_admin,notify:u.notify||[]}).then(function(ok){ if(ok) u.name=val; return ok; });
   }
   var client=p.src==='foh'?sb:sbKitchen, table=p.src==='foh'?'foh_staff':'staff', payload={};
-  if(col==='name') payload.name=val; else if(col==='code') payload.emp_id=val||null; else if(col==='role') payload[p.src==='foh'?'role':'designation']=val;
+  if(col==='name') payload.name=val;
+  else if(col==='code') payload.emp_id=val||null;
+  else if(col==='role') payload[p.src==='foh'?'role':'designation']=val;
+  else if(col==='in_schedule') payload.in_schedule=(val===true||val==='true');
   return client.from(table).update(payload).eq('id',p.id).then(function(res){
-    if(res.error){ alert('Could not save: '+res.error.message); return false; }
+    if(res.error){
+      if(col==='in_schedule' && /in_schedule/.test(res.error.message||''))
+        alert('To use “show in schedule”, run this once in Supabase ('+(p.src==='foh'?'FOH':'Kitchen')+' project):\n\nalter table '+table+' add column if not exists in_schedule boolean not null default true;\nnotify pgrst,\'reload schema\';');
+      else alert('Could not save: '+res.error.message);
+      return false;
+    }
     var rec=admStaffRec(p.src,p.id);
-    if(rec){ if(col==='name') rec.name=val; else if(col==='code') rec.emp_id=val||null; else if(col==='role'){ if(p.src==='foh') rec.role=val; else rec.designation=val; } }
+    if(rec){ if(col==='name') rec.name=val; else if(col==='code') rec.emp_id=val||null; else if(col==='role'){ if(p.src==='foh') rec.role=val; else rec.designation=val; } else if(col==='in_schedule') rec.in_schedule=payload.in_schedule; }
     return true;
   });
 }
@@ -5437,7 +5619,7 @@ async function fohLoadSchedData(){
     sb.from('foh_roster').select('*').gte('work_date', weekFrom).lte('work_date', weekEnd).limit(5000),
     sb.from('foh_events').select('*').gte('event_date', weekFrom).lte('event_date', weekEnd).limit(2000)
   ]);
-  fohSchedStaff = res[0].data || [];
+  fohSchedStaff = (res[0].data || []).filter(function(s){ return s.in_schedule!==false; });   // Admin "show in schedule" toggle (foh_staff.in_schedule); null/absent = shown
   fohSchedRoster = {};
   (res[1].data || []).forEach(function(r){
     fohSchedRoster[fohSchedRosterKey(r.staff_id, String(r.work_date).slice(0,10))] = r;
