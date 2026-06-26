@@ -2025,6 +2025,7 @@ if ('serviceWorker' in navigator) {
   .sch-shift.em{background:#dc2626;color:#fff;border:1px solid #dc2626;font-weight:700;letter-spacing:1px}
   .sch-shift.tr{background:#0f766e;color:#fff;border:1px solid #0f766e;font-weight:700;letter-spacing:1px}
   .sch-shift.cat{background:#c2410c;color:#fff;border:1px solid #c2410c;font-weight:700;letter-spacing:1px}
+  .sch-shift.fs{background:#334155;color:#fff;border:1px solid #334155;font-weight:700;letter-spacing:1px}
   .sch-shift.empty{background:transparent;border:1px dashed var(--sabbia-dark);color:#bbb;font-size:10px}
   .sch-cell-today .sch-shift{border-color:var(--oliva)!important}
   .sch-day-section{margin-bottom:20px}
@@ -2101,7 +2102,7 @@ if ('serviceWorker' in navigator) {
     <div class="foh-hero-content">
       <img class="foh-hero-logo" src="robertos-logo-white.svg" alt="Roberto's">
     </div>
-    <div id="foh-build" style="position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4);z-index:3;font-variant-numeric:tabular-nums;">build 2026-06-26.3</div>
+    <div id="foh-build" style="position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.4);z-index:3;font-variant-numeric:tabular-nums;">build 2026-06-26.6</div>
   </div>
 
   <!-- main scroll area -->
@@ -5315,13 +5316,14 @@ const FOH_STATUS_META = {
   em:      { label: 'EM',  bg: 'em' },
   tr:      { label: 'TR',  bg: 'tr' },
   cat:     { label: 'CAT', bg: 'cat' },
+  fs:      { label: 'FS',  bg: 'fs' },
 };
 
 // Status colours for PRINT — mirror the on-screen .sch-shift.<bg> backgrounds (print
 // can't read the CSS classes). Keep in sync with the .sch-shift.* rules in the stylesheet.
 const FOH_STATUS_PRINT_COLOR = {
   off:'#7f1d1d', wo:'#1d4ed8', sl:'#d97706', ul:'#475569', al:'#047857',
-  ph:'#6d28d9', em:'#dc2626', tr:'#0f766e', cat:'#c2410c',
+  ph:'#6d28d9', em:'#dc2626', tr:'#0f766e', cat:'#c2410c', fs:'#334155',
 };
 
 // Note: the former hardcoded FOH_ROSTER (and the renderFohSchedule day-chip
@@ -6689,8 +6691,8 @@ async function fohSchedSendToHR(){
         dataRow.eachCell({includeEmpty:true},function(cell,colNumber){
           var baseFont={size:10,name:'Calibri'};
           var col=colNumber-1;
-          var fills={working:'FFFFFFFF',off:'FFF5F5F5',wo:'FFDBEAFE',sl:'FFFFF3C7',al:'FFD1FAE5',ph:'FFEDE9FE',em:'FFFEE2E2',tr:'FFCCFBF1',cat:'FFFFEDD5',empty:'FFFFFFFF'};
-          var fgColors={working:'FF333333',off:'FF999999',wo:'FF1e40af',sl:'FF92400e',al:'FF065f46',ph:'FF5b21b6',em:'FF991b1b',tr:'FF134e4a',cat:'FF9a3412',empty:'FFCCCCCC'};
+          var fills={working:'FFFFFFFF',off:'FFF5F5F5',wo:'FFDBEAFE',sl:'FFFFF3C7',al:'FFD1FAE5',ph:'FFEDE9FE',em:'FFFEE2E2',tr:'FFCCFBF1',cat:'FFFFEDD5',fs:'FFE2E8F0',empty:'FFFFFFFF'};
+          var fgColors={working:'FF333333',off:'FF999999',wo:'FF1e40af',sl:'FF92400e',al:'FF065f46',ph:'FF5b21b6',em:'FF991b1b',tr:'FF134e4a',cat:'FF9a3412',fs:'FF334155',empty:'FFCCCCCC'};
           if(col===0){ cell.style={font:Object.assign({bold:true},baseFont),fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+SABBIA}},border:hairBorder(),alignment:{vertical:'middle'}}; }
           else if(col===1){ cell.style={font:Object.assign({italic:true,color:{argb:'FF888888'}},baseFont),fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+SABBIA}},border:hairBorder(),alignment:{vertical:'middle'}}; }
           else if(col>=rowData.length-2){ cell.style={font:Object.assign({bold:true,color:{argb:'FF'+VINO}},baseFont),fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+LIGHT}},border:hairBorder(),alignment:{horizontal:'center',vertical:'middle'}}; }
@@ -6713,11 +6715,20 @@ async function fohSchedSendToHR(){
 
     if(btn) btn.textContent = '📧 Sending...';
 
+    // Re-send detection: if this exact week was already emailed to HR, flag it as an
+    // update so the email says "discard the previous roster, this is the latest version".
+    var isUpdate=false;
+    try {
+      var prior=await sb.from('reset_log').select('id')
+        .eq('app','foh').eq('action','roster_send').eq('scope',weekStr).limit(1);
+      isUpdate=!!(prior && prior.data && prior.data.length);
+    } catch(e){ console.warn('[roster] re-send check failed', e); }
+
     // Use Kitchen App edge function (same Resend setup, same recipients for now)
     var emailRes = await fetch('https://zrpglswalgjbtghudmhu.supabase.co/functions/v1/send-roster', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+KITCHEN_KEY },
-      body:JSON.stringify({ weekStr:weekStr, fileName:fileName, xlsxBase64:xlsxBase64, source:'FOH', sentBy:rosterWho.name })
+      body:JSON.stringify({ weekStr:weekStr, fileName:fileName, xlsxBase64:xlsxBase64, source:'FOH', sentBy:rosterWho.name, update:isUpdate })
     });
 
     var emailData = await emailRes.json();
@@ -7042,6 +7053,7 @@ async function chkShowHistory(){
         <option value="em">Emergency (EM)</option>
         <option value="tr">Training (TR)</option>
         <option value="cat">Catering (CAT)</option>
+        <option value="fs">Finishing (FS)</option>
       </select>
     </div>
     <div id="foh-sch-time-fields">
