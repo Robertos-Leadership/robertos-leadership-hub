@@ -46,7 +46,12 @@
   <h1>Voice count — try it</h1>
   <div class="sub">Say or type the item and how many, e.g. "Grey Goose four".</div>
 
-  <button class="mic" id="micBtn">🎤 Count by voice</button>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="mic" id="micBtn" style="flex:1;margin-bottom:0">🎤 Count by voice</button>
+    <select id="langSel" title="Voice language — set it to the section you're counting" style="flex:none;height:56px;border:1px solid var(--gold);border-radius:12px;padding:0 10px;font-size:15px;background:#fff;color:var(--vino);font-weight:600">
+      <option value="en-GB">EN</option><option value="fr-FR">FR</option><option value="it-IT">IT</option>
+    </select>
+  </div>
 
   <div class="typerow">
     <input id="typed" placeholder='or type: "macallan twelve three"' inputmode="text">
@@ -1002,17 +1007,29 @@ function stVoiceExtract(transcript){
   }
   return {qty:qty,name:name.trim()};
 }
-function stVoiceNorm(s){ return String(s||'').toLowerCase().replace(/\s+-\s*\w+\s*$/,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); }
+function stVoiceNorm(s){
+  s=String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');   // drop accents: château->chateau
+  return s.replace(/\s+-\s*\w+\s*$/,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function stLev(a,b){ var m=a.length,n=b.length; if(Math.abs(m-n)>2) return 9; var d=[],i,j; for(i=0;i<=m;i++)d[i]=[i]; for(j=0;j<=n;j++)d[0][j]=j; for(i=1;i<=m;i++)for(j=1;j<=n;j++){ var c=a.charAt(i-1)===b.charAt(j-1)?0:1; d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);} return d[m][n]; }
+function stTokenHit(qt, nts, n){
+  if(n.indexOf(qt)>=0) return true;
+  for(var i=0;i<nts.length;i++){ var w=nts[i];
+    if(w.length>=4 && qt.length>=4 && (w.indexOf(qt)===0||qt.indexOf(w)===0)) return true;
+    if(qt.length>=4 && stLev(qt,w)<=Math.max(1,Math.floor(qt.length/4))) return true;
+  }
+  return false;
+}
 function stVoiceMatch(query){
   var q=stVoiceNorm(query); if(!q) return [];
   var qt=q.split(' ').filter(function(t){return t.length>1;}); if(!qt.length) qt=[q];
   var scored=[];
   stItems.forEach(function(it){
-    var n=stVoiceNorm(it.name); if(!n) return;
-    var hit=0; qt.forEach(function(t){ if(n.indexOf(t)>=0) hit++; });
+    var n=stVoiceNorm(it.name); if(!n) return; var nts=n.split(' ');
+    var hit=0; qt.forEach(function(t){ if(stTokenHit(t,nts,n)) hit++; });
     var score=hit/qt.length;
     if(n.indexOf(q)>=0) score+=0.5;
-    if(n.split(' ')[0]===qt[0]) score+=0.15;
+    if(nts[0]===qt[0]) score+=0.15;
     if(score>=0.5) scored.push({it:it,score:score});
   });
   scored.sort(function(a,b){return b.score-a.score;});
@@ -1021,8 +1038,10 @@ function stVoiceMatch(query){
 
 // ── UI ────────────────────────────────────────────────────────────────────
 var rec=null, cands=[], vFinal='', vInterim='', vDone=false, vMode='full';
+var vLang=(function(){ try{ return localStorage.getItem('stVoiceLang')||'en-GB'; }catch(e){ return 'en-GB'; } })();
 function supported(){ return ('SpeechRecognition' in window)||('webkitSpeechRecognition' in window); }
 if(!supported()){ document.getElementById('micBtn').textContent='🎤 Voice not available on this device — type below'; document.getElementById('micBtn').style.opacity=.6; }
+(function(){ var ls=document.getElementById('langSel'); if(ls){ ls.value=vLang; ls.onchange=function(){ vLang=this.value; try{ localStorage.setItem('stVoiceLang',vLang); }catch(e){} }; } })();
 
 document.getElementById('micBtn').onclick=startVoice;
 function startVoice(mode){
@@ -1034,7 +1053,7 @@ function startVoice(mode){
   vFinal=''; vInterim=''; vDone=false;
   showListening(vMode);
   // continuous + interim: keep listening (no rush), show live text, act only on Done
-  rec=new SR(); rec.lang='en-GB'; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
+  rec=new SR(); rec.lang=vLang; rec.continuous=true; rec.interimResults=true; rec.maxAlternatives=1;
   rec.onresult=function(e){
     vFinal=''; vInterim='';
     for(var i=0;i<e.results.length;i++){ var r=e.results[i]; if(r.isFinal) vFinal+=r[0].transcript+' '; else vInterim+=r[0].transcript; }

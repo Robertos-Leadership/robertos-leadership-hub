@@ -416,7 +416,11 @@ function stRender(){
         '<button class="st-btn" onclick="stPrint()">Print</button>'+
         (stIsSuper()?'<button class="st-btn danger" onclick="stClearAllCounts()">Clear all counts</button>':'')+
       '</div>' : '')+
-    (stUser && stVoiceSupported() ? '<button class="st-btn" style="margin:8px 14px 0;width:calc(100% - 28px);background:#410207;color:#f5ede0;height:46px;font-size:15px;flex:none" onclick="stVoiceStart()">🎤 Count by voice</button>' : '')+
+    (stUser && stVoiceSupported() ? '<div style="display:flex;gap:8px;margin:8px 14px 0">'+
+        '<button class="st-btn" style="flex:1;background:#410207;color:#f5ede0;height:46px;font-size:15px" onclick="stVoiceStart()">🎤 Count by voice</button>'+
+        '<select class="st-select" style="flex:none;height:46px" title="Voice language — set it to the section you are counting" onchange="stVoiceLang=this.value">'+
+          ['en-GB','fr-FR','it-IT'].map(function(L){ var lbl={'en-GB':'EN','fr-FR':'FR','it-IT':'IT'}[L]; return '<option value="'+L+'"'+(stVoiceLang===L?' selected':'')+'>'+lbl+'</option>'; }).join('')+
+        '</select></div>' : '')+
     (stUser?'<div style="padding:4px 14px 0;font-size:12px;color:#8a7a55;line-height:1.4">Type the <b>total</b> you counted in the white box. Use the green <b>+ add</b> box to add onto a count someone already started (e.g. a second person or the store-room).'+(stVoiceSupported()?' Or tap <b>🎤 Count by voice</b> and say the item and how many.':'')+'</div>':'')+
     '<div id="st-rows"></div>'+
     '<button class="st-addbtn" onclick="stShowAdd()">+ Add missing item</button>';
@@ -873,25 +877,40 @@ function stVoiceExtract(transcript){
   return { qty:qty, name:name.trim() };
 }
 // normalise an item name for matching (drop the trailing " -code", punctuation)
-function stVoiceNorm(s){ return String(s||'').toLowerCase().replace(/\s+-\s*\w+\s*$/,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); }
-// best item candidates for a spoken name (top 4), within the current dept's list
+// normalise + DROP ACCENTS so a French/Italian name spoken in English still
+// matches: château->chateau, gewürztraminer->gewurztraminer, espadón->espadon.
+function stVoiceNorm(s){
+  s=String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return s.replace(/\s+-\s*\w+\s*$/,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+// tiny edit-distance (capped) so a near-mishear still matches (montalchino~montalcino)
+function stLev(a,b){ var m=a.length,n=b.length; if(Math.abs(m-n)>2) return 9; var d=[],i,j; for(i=0;i<=m;i++)d[i]=[i]; for(j=0;j<=n;j++)d[0][j]=j; for(i=1;i<=m;i++)for(j=1;j<=n;j++){ var c=a.charAt(i-1)===b.charAt(j-1)?0:1; d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);} return d[m][n]; }
+function stTokenHit(qt, nts, n){
+  if(n.indexOf(qt)>=0) return true;                                        // substring
+  for(var i=0;i<nts.length;i++){ var w=nts[i];
+    if(w.length>=4 && qt.length>=4 && (w.indexOf(qt)===0||qt.indexOf(w)===0)) return true;   // prefix either way
+    if(qt.length>=4 && stLev(qt,w)<=Math.max(1,Math.floor(qt.length/4))) return true;        // close mishear
+  }
+  return false;
+}
+// best item candidates for a spoken name, within the current dept's list
 function stVoiceMatch(query){
   var q=stVoiceNorm(query); if(!q) return [];
   var qt=q.split(' ').filter(function(t){ return t.length>1; }); if(!qt.length) qt=[q];
   var scored=[];
   stItems.forEach(function(it){
-    var n=stVoiceNorm(it.name); if(!n) return;
-    var hit=0; qt.forEach(function(t){ if(n.indexOf(t)>=0) hit++; });
+    var n=stVoiceNorm(it.name); if(!n) return; var nts=n.split(' ');
+    var hit=0; qt.forEach(function(t){ if(stTokenHit(t,nts,n)) hit++; });
     var score=hit/qt.length;
     if(n.indexOf(q)>=0) score+=0.5;
-    if(n.split(' ')[0]===qt[0]) score+=0.15;
+    if(nts[0]===qt[0]) score+=0.15;
     if(score>=0.5) scored.push({it:it,score:score});
   });
   scored.sort(function(a,b){ return b.score-a.score; });
   return scored.slice(0,30).map(function(x){ return x.it; });   // show ALL matches (e.g. every "juice"), not just the top few
 }
 
-var stRec=null, stVFinal='', stVInterim='', stVDone=false, stVoiceMode='full';
+var stRec=null, stVFinal='', stVInterim='', stVDone=false, stVoiceMode='full', stVoiceLang='en-GB';
 var stVoiceCands=[];
 // mode 'full' = item + quantity in one go; mode 'qty' = just the number, into the
 // already-open confirm card (so you can say the product first, then the quantity).
@@ -905,7 +924,7 @@ function stVoiceStart(mode){
   stVFinal=''; stVInterim=''; stVDone=false;
   stVoiceShowListening(stVoiceMode);
   // continuous + interim: don't rush the speaker; show live text; act only on Done
-  stRec=new SR(); stRec.lang='en-GB'; stRec.continuous=true; stRec.interimResults=true; stRec.maxAlternatives=1;
+  stRec=new SR(); stRec.lang=stVoiceLang; stRec.continuous=true; stRec.interimResults=true; stRec.maxAlternatives=1;
   stRec.onresult=function(e){
     stVFinal=''; stVInterim='';
     for(var i=0;i<e.results.length;i++){ var r=e.results[i]; if(r.isFinal) stVFinal+=r[0].transcript+' '; else stVInterim+=r[0].transcript; }
