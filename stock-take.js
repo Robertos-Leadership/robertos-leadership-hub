@@ -884,12 +884,22 @@ function stVoiceNorm(s){
   return s.replace(/\s+-\s*\w+\s*$/,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
 }
 // tiny edit-distance (capped) so a near-mishear still matches (montalchino~montalcino)
-function stLev(a,b){ var m=a.length,n=b.length; if(Math.abs(m-n)>2) return 9; var d=[],i,j; for(i=0;i<=m;i++)d[i]=[i]; for(j=0;j<=n;j++)d[0][j]=j; for(i=1;i<=m;i++)for(j=1;j<=n;j++){ var c=a.charAt(i-1)===b.charAt(j-1)?0:1; d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);} return d[m][n]; }
+function stLev(a,b){ var m=a.length,n=b.length; if(Math.abs(m-n)>3) return 9; var d=[],i,j; for(i=0;i<=m;i++)d[i]=[i]; for(j=0;j<=n;j++)d[0][j]=j; for(i=1;i<=m;i++)for(j=1;j<=n;j++){ var c=a.charAt(i-1)===b.charAt(j-1)?0:1; d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);} return d[m][n]; }
+// loose phonetic key so a sound-alike transcription still matches:
+// "sassicaia" and "sasi kaya" both reduce to "sasikaia".
+function stPhon(s){
+  s=stVoiceNorm(s).replace(/[0-9]/g,'').replace(/\s+/g,'');
+  s=s.replace(/ck/g,'k').replace(/q/g,'k').replace(/c/g,'k').replace(/x/g,'ks').replace(/ph/g,'f').replace(/z/g,'s').replace(/y/g,'i').replace(/h/g,'');
+  return s.replace(/(.)\1+/g,'$1');
+}
 function stTokenHit(qt, nts, n){
   if(n.indexOf(qt)>=0) return true;                                        // substring
+  var pq=stPhon(qt);
   for(var i=0;i<nts.length;i++){ var w=nts[i];
     if(w.length>=4 && qt.length>=4 && (w.indexOf(qt)===0||qt.indexOf(w)===0)) return true;   // prefix either way
     if(qt.length>=4 && stLev(qt,w)<=Math.max(1,Math.floor(qt.length/4))) return true;        // close mishear
+    if(pq.length>=3){ var pw=stPhon(w);                                                       // sound-alike
+      if(pw.length>=3 && (pw.indexOf(pq)>=0 || pq.indexOf(pw)===0 || stLev(pq,pw)<=1)) return true; }
   }
   return false;
 }
