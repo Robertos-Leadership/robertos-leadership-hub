@@ -1016,7 +1016,7 @@ function stVoiceMatch(query){
     if(score>=0.5) scored.push({it:it,score:score});
   });
   scored.sort(function(a,b){return b.score-a.score;});
-  return scored.slice(0,4).map(function(x){return x.it;});
+  return scored.slice(0,30).map(function(x){return x.it;});
 }
 
 // ── UI ────────────────────────────────────────────────────────────────────
@@ -1083,7 +1083,7 @@ function showConfirm(heard, qty, list){
   var qv=(qty==null||isNaN(qty))?'':qty;
   var b=document.createElement('div'); b.id='confModal'; b.className='modal';
   b.innerHTML='<div class="box"><h3>Check before saving</h3><div class="heard">Heard: "'+esc(heard)+'"</div>'+
-    '<label>Item</label><select id="cItem">'+opts+'</select>'+
+    '<label>Item'+(list.length>1?' — '+list.length+' matches, pick one':'')+'</label><select id="cItem">'+opts+'</select>'+
     '<label>Add this many</label><div style="display:flex;gap:8px;margin-bottom:12px"><input id="cQty" inputmode="decimal" value="'+qv+'" placeholder="how many" style="flex:1;margin-bottom:0">'+
     '<button onclick="startVoice(\'qty\')" style="flex:none;border:1px solid var(--gold);background:#fff;color:var(--vino);border-radius:10px;padding:0 12px;font-weight:600;cursor:pointer">🎤 Say number</button></div>'+
     '<div class="row"><button onclick="document.getElementById(\'confModal\').remove()">Cancel</button>'+

@@ -888,7 +888,7 @@ function stVoiceMatch(query){
     if(score>=0.5) scored.push({it:it,score:score});
   });
   scored.sort(function(a,b){ return b.score-a.score; });
-  return scored.slice(0,4).map(function(x){ return x.it; });
+  return scored.slice(0,30).map(function(x){ return x.it; });   // show ALL matches (e.g. every "juice"), not just the top few
 }
 
 var stRec=null, stVFinal='', stVInterim='', stVDone=false, stVoiceMode='full';
@@ -958,7 +958,7 @@ function stVoiceShowConfirm(heard, qty, cands){
   b.innerHTML='<div class="st-modal-box" onclick="event.stopPropagation()">'+
     '<div style="font-weight:700;color:#410207;margin-bottom:4px">Check before saving</div>'+
     '<div style="font-size:12px;color:#8a7a55;margin-bottom:12px">Heard: "'+stEsc(heard)+'"</div>'+
-    '<label style="font-size:12px;color:#8a7a55">Item</label>'+
+    '<label style="font-size:12px;color:#8a7a55">Item'+(cands.length>1?' — '+cands.length+' matches, pick the right one':'')+'</label>'+
     '<select id="st-voice-item" class="st-select" style="width:100%;height:40px;margin:4px 0 12px">'+opts+'</select>'+
     '<label style="font-size:12px;color:#8a7a55">Add this many</label>'+
     '<div style="display:flex;gap:8px;margin:4px 0 14px"><input id="st-voice-qty" class="st-input" inputmode="decimal" value="'+qv+'" placeholder="how many" style="flex:1;height:40px">'+
