@@ -134,7 +134,7 @@ function renderMain(){
   const el = document.getElementById('main-content');
   const sec = document.getElementById('topbar-section');
   const tab = state.currentTab;
-  if(sec) sec.textContent = tab==='revenue' ? 'Revenue' : (tab==='operations' ? 'Operations' : (tab==='stocktake' ? 'Stock Take' : (tab==='admin' ? 'Admin' : (tab==='dashboard' ? 'Leaders' : 'Events'))));
+  if(sec) sec.textContent = tab==='revenue' ? 'Revenue' : (tab==='operations' ? 'Operations' : (tab==='stocktake' ? 'Stock Take' : (tab==='admin' ? 'Admin' : (tab==='dashboard' ? 'Leaders' : 'Activations'))));
   // Build the HTML first, then only touch the DOM if it actually changed.
   // The realtime path reloads all tables and re-renders on ANY change from ANY
   // screen — most of which don't affect the current view. Skipping an identical
@@ -188,7 +188,7 @@ function renderDashboard(){
           <div class="event-card-title">${ev.name}</div>
           <div class="event-card-date">${week.week_label||week.week_date} | Cancelled</div>
         </div>
-        <div class="event-card-note">Cancelled for this week only - the event runs as normal every other week.</div>
+        <div class="event-card-note">Cancelled for this week only - the activation runs as normal every other week.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-gold btn-sm" onclick="restoreWeek('${week.id}','${ev.id}')">Restore this week</button>
         </div>
@@ -254,7 +254,7 @@ function renderDashboard(){
         </div>
         <button class="btn btn-outline btn-sm" onclick="switchTab('${eventTab(state.events.find(e=>e.id===t.eventId))}')">Open</button>
       </div>`).join('')
-    : '<div class="empty-state" style="background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow)">No urgent action. Events are on track.</div>';
+    : '<div class="empty-state" style="background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow)">No urgent action. Activations are on track.</div>';
 
   // all-time done counts across every loaded week
   const allTimeDone = {};
@@ -377,7 +377,7 @@ function renderLeaderTaskRow(t){
 
 // EVENT PAGE
 function renderEventPage(ev){
-  if(!ev) return '<div class="loading">Event not found</div>';
+  if(!ev) return '<div class="loading">Activation not found</div>';
   const weeks = state.weeks[ev.id]||[];
   const wid = state.currentWeek[ev.id];
   const week = weeks.find(w=>w.id===wid);
@@ -395,7 +395,7 @@ function renderEventPage(ev){
   const dleft = week ? daysUntil(week.week_date) : null;
   const doneCount = tasks.filter(t=>t.status==='done').length;
   const pct = tasks.length ? Math.round(doneCount/tasks.length*100) : 0;
-  const cdLabel = dleft===null ? '' : (dleft>1 ? dleft+' days to go' : dleft===1 ? 'Tomorrow' : dleft===0 ? 'Tonight' : 'Event passed');
+  const cdLabel = dleft===null ? '' : (dleft>1 ? dleft+' days to go' : dleft===1 ? 'Tomorrow' : dleft===0 ? 'Tonight' : 'Activation passed');
   const countdown = week ? `
   <div class="event-countdown">
     <div class="countdown-days ${dleft===0?'tonight':''}">${cdLabel}</div>
@@ -462,7 +462,7 @@ function renderEventPage(ev){
 
   <div class="overview-card">
     <div class="overview-head">
-      <span class="overview-title">Event Brief</span>
+      <span class="overview-title">Activation Brief</span>
       <button class="overview-edit" onclick="openEditOverview('${ev.id}')">Edit</button>
     </div>
     <div class="overview-grid">
@@ -491,7 +491,7 @@ function renderEventPage(ev){
     <div class="task-actions" style="position:relative">
       <button class="btn btn-outline btn-sm more-btn" onclick="toggleTaskMenu(event,'weekbar-${ev.id}')" title="More actions">&#8943;</button>
       <div class="task-menu" id="task-menu-weekbar-${ev.id}" style="top:36px;min-width:240px">
-        <button onclick="toggleEventPause('${ev.id}')">${(ev.status||'active')==='paused' ? 'Resume Event' : 'Pause Event'}</button>
+        <button onclick="toggleEventPause('${ev.id}')">${(ev.status||'active')==='paused' ? 'Resume Activation' : 'Pause Activation'}</button>
         <button onclick="newWeek('${ev.id}')">New Week (manual)</button>
         <button onclick="openEditEvent('${ev.id}')">Targets &amp; Budget</button>
         ${wid ? `<button onclick="resetEventTasks('${ev.id}')">Reset Tasks</button>` : ''}
@@ -1015,7 +1015,7 @@ function openLeaderAddTask(){
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">Event</label>
+        <label class="form-label">Activation</label>
         <select class="form-select" id="leader-task-event">${eventOptions}</select>
       </div>
       <div class="form-group">
@@ -1070,7 +1070,7 @@ async function addLeaderTask(){
   if(!ev){ toast('Please choose an event',true); return; }
   const weekId = state.currentWeek[eventId];
   const wk = (state.weeks[eventId]||[]).find(w=>w.id===weekId);
-  if(!weekId || !wk){ toast('Create a week for this event first',true); return; }
+  if(!weekId || !wk){ toast('Create a week for this activation first',true); return; }
   const stage = stageEl?.value || 'prepare';
   const track = 'champion';
   const due = wk ? isoDateFromOffset(wk.week_date, DUE_BY_TRACK[track] ?? -1) : null;
@@ -1158,7 +1158,7 @@ function resetEventTasks(eventId, clearResponsibilities=false){
       if(t.event_id===eventId) ids.push(t.id);
     });
   }
-  resetTasksByIds(ids, ev?.name || 'this event', clearResponsibilities);
+  resetTasksByIds(ids, ev?.name || 'this activation', clearResponsibilities);
 }
 
 async function deleteTask(taskId){
@@ -1493,7 +1493,7 @@ function openEditOverview(eventId){
   if(!ev) return;
   const wid = state.currentWeek[ev.id];
   const week = (state.weeks[ev.id]||[]).find(w=>w.id===wid);
-  document.getElementById('modal-title').textContent = 'Edit Event Brief';
+  document.getElementById('modal-title').textContent = 'Edit Activation Brief';
   document.getElementById('modal-body').innerHTML = `
     <div class="form-row">
       <div class="form-group">
@@ -1552,7 +1552,7 @@ function openEditEvent(eventId){
   document.getElementById('modal-title').textContent = 'Edit Targets / Budget';
   document.getElementById('modal-body').innerHTML = `
     <div class="form-group">
-      <label class="form-label">Event Name</label>
+      <label class="form-label">Activation Name</label>
       <input class="form-input" id="event-name" value="${ev.name||''}">
     </div>
     <div class="form-group">
@@ -1575,7 +1575,7 @@ function openEditEvent(eventId){
         <input class="form-input" id="event-entertainment" type="number" value="${ev.entertainment_cost||0}">
       </div>
       <div class="form-group">
-        <label class="form-label">Event Day</label>
+        <label class="form-label">Activation Day</label>
         <select class="form-select" id="event-day">
           ${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d=>`<option value="${d}" ${ev.day_of_week===d?'selected':''}>${d}</option>`).join('')}
         </select>
